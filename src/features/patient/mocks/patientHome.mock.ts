@@ -26,9 +26,9 @@ export const mockPatientHomeByCode: Record<string, PatientHomeData> = {
     },
     nextAction: {
       type: "has_daily_training_plan",
-      eyebrow: "แผนการฝึกวันนี้",
-      title: "ฝึกเรียกชื่อสิ่งของรอบตัว",
-      description: "เริ่มจากแบบฝึกที่ระบบแนะนำตามผลการประเมินที่ผ่านมา",
+      eyebrow: "แบบฝึกวันนี้",
+      title: "ฝึกเรียกชื่อภาพ",
+      description: "ระบบเลือกแบบฝึกให้จากผลการประเมินที่ผ่านมา",
       progressPercent: 60,
       buttonText: "เริ่มฝึกวันนี้",
       targetPath: "/patient/training/today",
