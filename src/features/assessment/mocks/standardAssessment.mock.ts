@@ -266,22 +266,22 @@ export const mockStandardAssessmentSession: StandardAssessmentSession = {
 };
 
 export const mockStandardAssessmentIntro: StandardAssessmentIntro = {
-  title: "แบบประเมินมาตรฐาน",
+  title: "ทำแบบทดสอบก่อนใช้งาน",
   subtitle:
-    "เริ่มทำแบบประเมินเพื่อให้ระบบวางแผนการฝึกที่เหมาะกับคุณ",
+    "เริ่มทำแบบทดสอบก่อนใช้งานเพื่อให้ระบบวางแผนการฝึกที่เหมาะกับคุณ",
   infoItems: [
     `ทั้งหมด ${mockStandardAssessmentSession.totalQuestions} ข้อ`,
     "ใช้เวลาประมาณ 10-15 นาที",
     "ตอบตามที่ทำได้ ไม่ต้องกังวล",
   ],
-  startButtonText: "เริ่มทำแบบประเมิน",
+  startButtonText: "เริ่มทำแบบทดสอบก่อนใช้งาน",
   startFeedbackMessage: "เยี่ยมเลย เริ่มกันเลย!",
 };
 
 export const mockStandardAssessmentResult: StandardAssessmentResult = {
   sessionId: mockStandardAssessmentSession.sessionId,
-  title: "จบการประเมิน",
-  subtitle: "ระบบบันทึกผลการประเมินของคุณเรียบร้อยแล้ว",
+  title: "จบแบบทดสอบก่อนใช้งาน",
+  subtitle: "ระบบบันทึกผลแบบทดสอบก่อนใช้งานของคุณเรียบร้อยแล้ว",
   completedQuestions: mockStandardAssessmentSession.totalQuestions,
   totalQuestions: mockStandardAssessmentSession.totalQuestions,
   summaryTitle: `ทำครบ ${mockStandardAssessmentSession.totalQuestions} ข้อ`,

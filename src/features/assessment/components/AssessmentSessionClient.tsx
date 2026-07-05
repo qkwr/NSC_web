@@ -12,7 +12,6 @@ import {
 } from "../services/standardAssessmentService";
 import type {
   AssessmentAnswer,
-  AssessmentHint,
   QuestionChoice,
   QuestionInteractionType,
   StandardAssessmentQuestion,
@@ -87,7 +86,7 @@ function getQuestionInstruction(interactionType: QuestionInteractionType) {
   }
 
   if (interactionType === "yes_no_choice") {
-    return "ตอบว่าใช่หรือไม่";
+    return "ตอบใช่/ไม่ใช่";
   }
 
   if (interactionType === "repeat_after") {
@@ -95,7 +94,7 @@ function getQuestionInstruction(interactionType: QuestionInteractionType) {
   }
 
   if (interactionType === "name_image") {
-    return "นึกคำ";
+    return "เรียกชื่อ";
   }
 
   return "คำถาม";
@@ -111,6 +110,18 @@ function getPromptSizeClass(promptText: string) {
   }
 
   return "text-[clamp(2.5rem,3.9vw,3.75rem)]";
+}
+
+function getRepeatPromptSizeClass(promptText: string) {
+  if (promptText.length > 26) {
+    return "text-[clamp(2.2rem,3vw,3.25rem)] leading-[1.18]";
+  }
+
+  if (promptText.length > 16) {
+    return "text-[clamp(2.9rem,4vw,4rem)] leading-[1.16]";
+  }
+
+  return "text-[clamp(4rem,5vw,4.5rem)] leading-[1.12]";
 }
 
 function getVoiceButtonText(recordingState: MockRecordingUiState) {
@@ -177,58 +188,6 @@ function AssessmentImage({
       onError={() => setFailedSrc(src)}
     />
   );
-}
-
-function getMaxHintLevel(question: StandardAssessmentQuestion) {
-  return question.hints?.length ?? 0;
-}
-
-function getHintLevelUsed(
-  level: number,
-  question: StandardAssessmentQuestion,
-): AssessmentAnswer["hintLevelUsed"] {
-  return Math.min(3, Math.max(0, Math.min(level, getMaxHintLevel(question)))) as
-    | 0
-    | 1
-    | 2
-    | 3;
-}
-
-function getHintForLevel(
-  question: StandardAssessmentQuestion,
-  level: number,
-) {
-  const maxHintLevel = getMaxHintLevel(question);
-  const safeLevel = Math.max(1, Math.min(level, maxHintLevel));
-
-  return (
-    question.hints?.find((hint) => hint.level === safeLevel) ||
-    question.hints?.[question.hints.length - 1]
-  );
-}
-
-function getHintBadgeLabel(hint: AssessmentHint) {
-  if (hint.type === "answer") {
-    return "เฉลย";
-  }
-
-  if (hint.type === "slow_repetition") {
-    return "พูดช้าลง";
-  }
-
-  if (hint.type === "normal_repetition") {
-    return "ความเร็วปกติ";
-  }
-
-  if (hint.type === "repeat_question") {
-    return "ทวนคำถาม";
-  }
-
-  if (hint.type === "feature") {
-    return "ใบ้ลักษณะ";
-  }
-
-  return "เสียงขึ้นต้น";
 }
 
 function ChatCircleIcon(props: SVGProps<SVGSVGElement>) {
@@ -327,43 +286,6 @@ function MicrophoneIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
-function LightbulbIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...props}
-    >
-      <path d="M9 18h6" />
-      <path d="M10 22h4" />
-      <path d="M8.5 14.5A6 6 0 1 1 15.5 14c-.8.6-1.5 1.7-1.5 3h-4c0-1.2-.6-2-1.5-2.5Z" />
-    </svg>
-  );
-}
-
-function SkipIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...props}
-    >
-      <path d="m7 6 8 6-8 6V6Z" fill="currentColor" stroke="none" />
-      <path d="M18 6v12" />
-    </svg>
-  );
-}
-
 function ArrowRightIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg
@@ -424,8 +346,8 @@ function SessionProgress({ percent }: { percent: number }) {
 
 function SessionPill({ children }: { children: ReactNode }) {
   return (
-    <div className="inline-flex min-h-[42px] items-center justify-center gap-3 rounded-full bg-[#F2FBFB] px-6 text-lg font-semibold text-[#12847D] ring-1 ring-[#CDEEEF]">
-      <ChatCircleIcon className="h-6 w-6" />
+    <div className="inline-flex min-h-[56px] items-center justify-center gap-3.5 rounded-full bg-[#F2FBFB] px-8 py-3 text-xl font-bold text-[#12847D] ring-1 ring-[#CDEEEF]">
+      <ChatCircleIcon className="h-7 w-7" />
       <span>{children}</span>
     </div>
   );
@@ -440,33 +362,48 @@ function QuestionCard({ question, promptText }: QuestionCardProps) {
   const instructionText = getQuestionInstruction(question.interactionType);
   const questionImageSrc = question.imageSrc ?? question.imageUrl;
   const isNamingImageQuestion = question.interactionType === "name_image";
+  const isImageChoiceQuestion = question.interactionType === "image_choice";
+  const isYesNoQuestion = question.interactionType === "yes_no_choice";
+  const isRepeatQuestion = question.interactionType === "repeat_after";
+  const showInstructionBadge =
+    question.interactionType !== "voice_question" &&
+    question.interactionType !== "image_choice" &&
+    question.interactionType !== "yes_no_choice" &&
+    question.interactionType !== "repeat_after" &&
+    question.interactionType !== "name_image";
 
   return (
     <article
-      className={`flex w-full max-w-[600px] flex-col items-center justify-center rounded-[32px] bg-white/96 text-center shadow-[0_18px_48px_rgba(17,103,99,0.12)] ring-1 ring-[#CDEEEF] ${
+      className={`flex w-full flex-col items-center justify-center rounded-[32px] bg-white/96 text-center shadow-[0_18px_48px_rgba(17,103,99,0.12)] ring-1 ring-[#CDEEEF] ${
         isNamingImageQuestion
-          ? "h-[clamp(464px,60vh,540px)] gap-4 px-7 py-5"
-          : "h-[clamp(292px,40vh,340px)] px-10 py-7"
+          ? "h-[clamp(500px,58vh,570px)] max-w-[640px] gap-9 px-8 py-8"
+          : isImageChoiceQuestion
+            ? "h-[clamp(260px,34vh,320px)] max-w-[460px] px-8 py-7"
+            : isYesNoQuestion
+              ? "h-[clamp(330px,42vh,390px)] max-w-[660px] px-10 py-7"
+              : "h-[clamp(330px,42vh,390px)] max-w-[640px] px-10 py-7"
       }`}
     >
-      <div
-        className={`inline-flex items-center justify-center gap-3 rounded-full bg-[#F2FBFB] font-semibold text-[#12847D] ring-1 ring-[#CDEEEF] ${
-          isNamingImageQuestion
-            ? "min-h-[36px] px-4 text-base"
-            : "mb-5 min-h-[42px] px-5 text-lg"
-        }`}
-      >
-        <ChatCircleIcon
-          className={isNamingImageQuestion ? "h-5 w-5" : "h-6 w-6"}
-        />
-        <span>{instructionText}</span>
-      </div>
+      {showInstructionBadge ? (
+        <div
+          className={`inline-flex items-center justify-center gap-3 rounded-full bg-[#F2FBFB] font-semibold text-[#12847D] ring-1 ring-[#CDEEEF] ${
+            isNamingImageQuestion
+              ? "min-h-[36px] px-4 text-base"
+              : "mb-5 min-h-[42px] px-5 text-lg"
+          }`}
+        >
+          <ChatCircleIcon
+            className={isNamingImageQuestion ? "h-5 w-5" : "h-6 w-6"}
+          />
+          <span>{instructionText}</span>
+        </div>
+      ) : null}
 
       {questionImageSrc || isNamingImageQuestion ? (
         <div
           className={`flex items-center justify-center overflow-hidden ring-1 ${
             isNamingImageQuestion
-              ? "h-[clamp(220px,39vh,320px)] w-[clamp(220px,39vh,320px)] rounded-[34px] bg-white/90 p-2 shadow-sm ring-[#CDEEEF]"
+              ? "h-[clamp(240px,32vh,300px)] w-[clamp(260px,34vh,340px)] rounded-[34px] bg-white/90 p-2 shadow-sm ring-[#CDEEEF]"
               : "mb-5 h-[clamp(136px,20vh,184px)] w-[clamp(136px,20vh,184px)] rounded-[28px] bg-[#F4FCFC] shadow-inner ring-[#D7EFF0]"
           }`}
         >
@@ -486,7 +423,9 @@ function QuestionCard({ question, promptText }: QuestionCardProps) {
       <h1
         className={`max-w-full break-words text-center font-bold text-[#143839] ${
           isNamingImageQuestion
-            ? "text-[clamp(2.2rem,3.35vw,3.55rem)] leading-[1.05]"
+            ? "text-[clamp(2.45rem,3.55vw,3.55rem)] leading-[1.18]"
+            : isRepeatQuestion
+              ? getRepeatPromptSizeClass(promptText)
             : `leading-[1.04] ${getPromptSizeClass(promptText)}`
         }`}
       >
@@ -515,7 +454,7 @@ function VoiceControls({
   const micStatusText = getVoiceStatusText(recordingState, hasMockRecording);
 
   return (
-    <section className="grid h-full min-h-0 w-full max-w-[680px] grid-cols-[minmax(0,1fr)_124px] items-center gap-8">
+    <section className="grid h-full min-h-[360px] w-full max-w-[680px] grid-cols-[minmax(0,1fr)_124px] items-center gap-6">
       <div className="flex min-h-0 flex-col items-center justify-center gap-3 text-center">
         <p className="text-lg font-semibold text-[#12847D]">{micStatusText}</p>
 
@@ -611,7 +550,7 @@ function ImageChoiceControls({
   onSelect,
 }: ImageChoiceControlsProps) {
   return (
-    <section className="grid w-full max-w-[760px] grid-cols-3 gap-4">
+    <section className="flex w-full max-w-[880px] flex-wrap items-center justify-center gap-3">
       {choices?.map((choice) => {
         const isSelected = selectedOptionId === choice.id;
         const isCorrectSelected = isSelected && feedbackState === "correct";
@@ -625,7 +564,7 @@ function ImageChoiceControls({
             aria-label={`เลือก${choice.label}`}
             disabled={isLocked}
             onClick={() => onSelect(choice)}
-            className={`relative flex h-[clamp(210px,34vh,280px)] flex-col items-center justify-center rounded-[28px] px-4 text-center transition focus:outline-none focus:ring-4 focus:ring-[#1FA89C]/20 active:scale-[0.98] disabled:cursor-not-allowed ${
+            className={`relative flex h-[clamp(260px,36vh,300px)] w-[clamp(220px,16vw,240px)] cursor-pointer flex-col items-center justify-center rounded-[28px] px-5 text-center transition focus:outline-none focus:ring-4 focus:ring-[#1FA89C]/20 active:scale-[0.98] disabled:cursor-not-allowed ${
               isCorrectSelected
                 ? "bg-[#EAF9F8] shadow-[0_18px_36px_rgba(31,168,156,0.18)] ring-2 ring-[#1FA89C]"
                 : isWrongSelected
@@ -647,7 +586,7 @@ function ImageChoiceControls({
             ) : null}
 
             {choiceImageSrc ? (
-              <div className="flex h-[clamp(170px,26vh,232px)] w-full max-w-[240px] items-center justify-center overflow-hidden rounded-3xl bg-[#F8FEFF]">
+              <div className="flex h-[clamp(190px,27vh,220px)] w-full max-w-[220px] items-center justify-center overflow-hidden rounded-3xl bg-[#F8FEFF]">
                 <AssessmentImage
                   src={choiceImageSrc}
                   alt={choice.label}
@@ -658,7 +597,7 @@ function ImageChoiceControls({
                 />
               </div>
             ) : (
-              <div className="flex h-[clamp(170px,26vh,232px)] w-full max-w-[240px] items-center justify-center rounded-3xl bg-[#F8FEFF] px-5 text-center text-xl font-bold text-[#6B7B80] ring-1 ring-[#D7EFF0]">
+              <div className="flex h-[clamp(190px,27vh,220px)] w-full max-w-[220px] items-center justify-center rounded-3xl bg-[#F8FEFF] px-5 text-center text-xl font-bold text-[#6B7B80] ring-1 ring-[#D7EFF0]">
                 ยังไม่มีรูป
               </div>
             )}
@@ -672,14 +611,12 @@ function ImageChoiceControls({
 type ImageChoiceFeedbackOverlayProps = {
   expectedAnswer?: string;
   feedbackState: ChoiceFeedbackState;
-  onClose: () => void;
   visible: boolean;
 };
 
 function ImageChoiceFeedbackOverlay({
   expectedAnswer,
   feedbackState,
-  onClose,
   visible,
 }: ImageChoiceFeedbackOverlayProps) {
   if (!visible || !feedbackState) {
@@ -707,73 +644,16 @@ function ImageChoiceFeedbackOverlay({
           {isCorrect ? "✓" : "×"}
         </div>
         <h3 className="mt-5 text-3xl font-bold leading-tight text-[#123232]">
-          {isCorrect ? "ถูกต้อง! เก่งมากเลย" : "ลองอีกครั้งนะคะ"}
+          {isCorrect ? "ถูกต้อง! เก่งมากเลย" : "ยังไม่ถูกต้อง"}
         </h3>
         {isCorrect && expectedAnswer ? (
           <p className="mt-3 text-lg font-bold text-[#2C6A4F]">
             คำตอบที่ถูก: {expectedAnswer}
           </p>
         ) : null}
-        {!isCorrect ? (
-          <button
-            className="mt-6 inline-flex min-h-[54px] items-center justify-center rounded-full bg-white px-8 text-lg font-bold text-[#B42318] shadow-sm ring-1 ring-[#F8C9C4]"
-            type="button"
-            onClick={onClose}
-          >
-            ลองใหม่
-          </button>
-        ) : (
-          <div className="mt-6 inline-flex items-center justify-center rounded-full bg-white/65 px-6 py-3 text-base font-bold text-[#123232]">
-            กำลังไปข้อต่อไป
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-type HintOverlayProps = {
-  hint?: AssessmentHint;
-  onClose: () => void;
-  visible: boolean;
-};
-
-function HintOverlay({ hint, onClose, visible }: HintOverlayProps) {
-  if (!visible || !hint) {
-    return null;
-  }
-
-  const isAnswer = hint.type === "answer";
-  const isSlowRepetition = hint.type === "slow_repetition";
-
-  return (
-    <div
-      className="pointer-events-auto fixed inset-0 z-50 flex items-center justify-center p-4"
-      aria-live="polite"
-    >
-      <div className="mx-auto w-full max-w-lg rounded-[28px] bg-[#FFF9E6] p-8 text-center shadow-[0_18px_40px_rgba(0,0,0,0.08)]">
-        <span
-          className={`inline-flex min-h-[40px] items-center justify-center rounded-full px-5 text-lg font-bold ${
-            isAnswer
-              ? "bg-[#FFE4E8] text-[#B42318]"
-              : isSlowRepetition
-                ? "bg-[#EAF9F8] text-[#0F756F]"
-                : "bg-white text-[#735C0F]"
-          }`}
-        >
-          {getHintBadgeLabel(hint)}
-        </span>
-        <h3 className="mt-5 text-3xl font-bold text-[#123232]">คำใบ้</h3>
-        <p className="mt-4 text-2xl font-semibold leading-relaxed text-[#354D50]">
-          {hint.text}
-        </p>
-        <button
-          className="mt-7 inline-flex min-h-[56px] items-center justify-center rounded-full bg-[#F0E28A] px-9 text-lg font-bold text-[#274024] shadow-sm transition hover:bg-[#EADF7C] focus:outline-none focus:ring-4 focus:ring-[#D6C85B]/30 active:scale-[0.98]"
-          onClick={onClose}
-          type="button"
-        >
-          เข้าใจแล้ว
-        </button>
+        <div className="mt-6 inline-flex items-center justify-center rounded-full bg-white/65 px-6 py-3 text-base font-bold text-[#123232]">
+          กำลังบันทึกคำตอบ
+        </div>
       </div>
     </div>
   );
@@ -795,7 +675,7 @@ function YesNoControls({
   onSelect,
 }: YesNoControlsProps) {
   return (
-    <section className="flex w-full max-w-[640px] gap-5">
+    <section className="flex w-full max-w-[640px] items-center justify-center gap-6">
       {choices?.map((choice) => {
         const isSelected = selectedOptionId === choice.id;
         const isCorrectSelected = isSelected && feedbackState === "correct";
@@ -807,7 +687,7 @@ function YesNoControls({
             type="button"
             disabled={isLocked}
             onClick={() => onSelect(choice)}
-            className={`flex h-[clamp(138px,22vh,180px)] flex-1 flex-col items-center justify-center rounded-[32px] px-6 text-2xl font-bold transition focus:outline-none focus:ring-4 focus:ring-[#1FA89C]/20 active:scale-[0.98] ${
+            className={`flex h-[clamp(220px,32vh,260px)] min-w-[220px] max-w-[280px] flex-1 flex-col items-center justify-center rounded-[32px] px-6 text-3xl font-bold transition focus:outline-none focus:ring-4 focus:ring-[#1FA89C]/20 active:scale-[0.98] ${
               isCorrectSelected
                 ? "bg-[#EAF9F8] text-[#0F756F] shadow-[0_18px_36px_rgba(31,168,156,0.16)] ring-2 ring-[#1FA89C]"
                 : isWrongSelected
@@ -817,7 +697,7 @@ function YesNoControls({
                 : "bg-white text-[#123232] shadow-[0_12px_28px_rgba(17,103,99,0.09)] ring-1 ring-[#D7EFF0] hover:bg-[#F7FFFF]"
             } disabled:cursor-not-allowed`}
           >
-            <span className="mb-2 text-[2.8rem] leading-none">
+            <span className="mb-5 text-[4.2rem] leading-none">
               {choice.id === "yes" ? "✓" : "×"}
             </span>
             <span>{choice.label}</span>
@@ -829,60 +709,26 @@ function YesNoControls({
 }
 
 type BottomControlsProps = {
-  hintLevel: number;
-  maxHintLevel: number;
   isSkipping: boolean;
-  isNextDisabled: boolean;
-  onHint: () => void;
   onSkip: () => void;
-  onNext: () => void;
 };
 
 function BottomControls({
-  hintLevel,
-  maxHintLevel,
   isSkipping,
-  isNextDisabled,
-  onHint,
   onSkip,
-  onNext,
 }: BottomControlsProps) {
-  const safeHintLevel = Math.min(hintLevel, maxHintLevel);
-
   return (
-    <div className="absolute bottom-7 left-9 right-9 z-20 grid grid-cols-3 items-center gap-5">
-      <div className="flex justify-center">
+    <div className="relative z-20 grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-6 px-9 pb-8 pt-3">
+      <div />
+      <div className="flex justify-end">
         <button
-          className="inline-flex min-h-[54px] min-w-[172px] items-center justify-center gap-3 rounded-full bg-white px-6 text-lg font-semibold text-[#13756F] shadow-[0_10px_24px_rgba(17,103,99,0.11)] ring-1 ring-[#CDEEEF] transition hover:bg-[#F7FFFF] focus:outline-none focus:ring-4 focus:ring-[#1FA89C]/20 active:scale-[0.98]"
-          type="button"
-          onClick={onHint}
-        >
-          <LightbulbIcon className="h-7 w-7" />
-          <span>คำใบ้ {safeHintLevel}/{maxHintLevel}</span>
-        </button>
-      </div>
-
-      <div className="flex justify-center">
-        <button
-          className="inline-flex min-h-[54px] min-w-[172px] items-center justify-center gap-3 rounded-full bg-white px-6 text-lg font-semibold text-[#13756F] shadow-[0_10px_24px_rgba(17,103,99,0.11)] ring-1 ring-[#CDEEEF] transition hover:bg-[#F7FFFF] focus:outline-none focus:ring-4 focus:ring-[#1FA89C]/20 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex min-h-[72px] w-full max-w-[330px] items-center justify-center gap-4 rounded-full bg-[linear-gradient(180deg,#27B5AA_0%,#13958C_100%)] px-9 text-2xl font-bold text-white shadow-[0_14px_30px_rgba(19,149,140,0.23)] transition hover:translate-y-[-1px] focus:outline-none focus:ring-4 focus:ring-[#1FA89C]/25 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55"
           type="button"
           disabled={isSkipping}
           onClick={onSkip}
         >
-          <SkipIcon className="h-7 w-7" />
+          <ArrowRightIcon className="h-9 w-9" />
           <span>{isSkipping ? "กำลังข้าม..." : "ข้ามข้อนี้"}</span>
-        </button>
-      </div>
-
-      <div className="flex justify-end">
-        <button
-          className="inline-flex min-h-[64px] w-[clamp(292px,22vw,330px)] items-center justify-center gap-4 rounded-full bg-[linear-gradient(180deg,#27B5AA_0%,#13958C_100%)] px-9 text-2xl font-bold text-white shadow-[0_14px_30px_rgba(19,149,140,0.23)] transition hover:translate-y-[-1px] focus:outline-none focus:ring-4 focus:ring-[#1FA89C]/25 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55"
-          type="button"
-          disabled={isNextDisabled}
-          onClick={onNext}
-        >
-          <ArrowRightIcon className="h-8 w-8" />
-          <span>ไปข้อต่อไป</span>
         </button>
       </div>
     </div>
@@ -902,10 +748,8 @@ export function AssessmentSessionClient() {
   const [showReplayFeedback, setShowReplayFeedback] = useState(false);
   const [feedbackVisible, setFeedbackVisible] = useState(false);
   const [feedbackType, setFeedbackType] = useState<
-    "correct" | "almost" | "wrong" | "hint" | "skipped"
+    "correct" | "almost" | "wrong" | "skipped"
   >("correct");
-  const [activeHint, setActiveHint] = useState<AssessmentHint>();
-  const [hintOverlayVisible, setHintOverlayVisible] = useState(false);
   const [imageChoiceFeedbackState, setImageChoiceFeedbackState] =
     useState<ChoiceFeedbackState>(null);
   const [imageChoiceFeedbackVisible, setImageChoiceFeedbackVisible] =
@@ -917,7 +761,6 @@ export function AssessmentSessionClient() {
   );
   const [isSkipping, setIsSkipping] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [hintLevel, setHintLevel] = useState(0);
   const [questionStartedAt, setQuestionStartedAt] = useState(() => Date.now());
   const [isLoading, setIsLoading] = useState(true);
 
@@ -954,8 +797,6 @@ export function AssessmentSessionClient() {
     setRecordingState("idle");
     setHasMockRecording(false);
     setShowReplayFeedback(false);
-    setActiveHint(undefined);
-    setHintOverlayVisible(false);
     setImageChoiceFeedbackState(null);
     setImageChoiceFeedbackVisible(false);
     setIsImageChoiceSaving(false);
@@ -977,19 +818,17 @@ export function AssessmentSessionClient() {
     }
 
     resetQuestionUiState();
-    setHintLevel(0);
     setQuestionStartedAt(Date.now());
     setCurrentQuestionIndex((index) => index + 1);
   }
 
-  function getAnswerMetadata(
-    question: StandardAssessmentQuestion,
-  ): Pick<AssessmentAnswer, "hintLevelUsed" | "hintCountUsed" | "responseTimeMs"> {
-    const hintUsed = getHintLevelUsed(hintLevel, question);
-
+  function getAnswerMetadata(): Pick<
+    AssessmentAnswer,
+    "hintLevelUsed" | "hintCountUsed" | "responseTimeMs"
+  > {
     return {
-      hintLevelUsed: hintUsed,
-      hintCountUsed: hintUsed,
+      hintLevelUsed: 0,
+      hintCountUsed: 0,
       responseTimeMs: Math.max(0, Date.now() - questionStartedAt),
     };
   }
@@ -1015,23 +854,17 @@ export function AssessmentSessionClient() {
     setSelectedOptionId(choice.id);
     setErrorMessage("");
 
-    if (!choice.isCorrect) {
-      setImageChoiceFeedbackState("wrong");
-      setImageChoiceFeedbackVisible(true);
-      return;
-    }
-
     setIsImageChoiceSaving(true);
-    setImageChoiceFeedbackState("correct");
+    setImageChoiceFeedbackState(choice.isCorrect ? "correct" : "wrong");
     setImageChoiceFeedbackVisible(true);
-    setFeedbackExpected(currentQuestion.expectedAnswer);
+    setFeedbackExpected(choice.isCorrect ? currentQuestion.expectedAnswer : undefined);
 
     const isSaved = await saveCurrentAnswer({
       questionId: currentQuestion.id,
       answerType: "image_choice",
       selectedOptionId: choice.id,
-      isCorrect: true,
-      ...getAnswerMetadata(currentQuestion),
+      isCorrect: choice.isCorrect,
+      ...getAnswerMetadata(),
     });
 
     if (!isSaved) {
@@ -1057,23 +890,17 @@ export function AssessmentSessionClient() {
     setSelectedOptionId(choice.id);
     setErrorMessage("");
 
-    if (!choice.isCorrect) {
-      setImageChoiceFeedbackState("wrong");
-      setImageChoiceFeedbackVisible(true);
-      return;
-    }
-
     setIsImageChoiceSaving(true);
-    setImageChoiceFeedbackState("correct");
+    setImageChoiceFeedbackState(choice.isCorrect ? "correct" : "wrong");
     setImageChoiceFeedbackVisible(true);
-    setFeedbackExpected(currentQuestion.expectedAnswer);
+    setFeedbackExpected(choice.isCorrect ? currentQuestion.expectedAnswer : undefined);
 
     const isSaved = await saveCurrentAnswer({
       questionId: currentQuestion.id,
       answerType: "yes_no_choice",
       selectedOptionId: choice.id,
-      isCorrect: true,
-      ...getAnswerMetadata(currentQuestion),
+      isCorrect: choice.isCorrect,
+      ...getAnswerMetadata(),
     });
 
     if (!isSaved) {
@@ -1089,32 +916,6 @@ export function AssessmentSessionClient() {
     }, 1200);
   }
 
-  async function handleSaveAndContinue() {
-    if (!session) {
-      return;
-    }
-
-    if (isImageChoiceQuestion || isYesNoQuestion) {
-      return;
-    }
-
-    const currentQuestion = session.questions[currentQuestionIndex];
-
-    const answer: AssessmentAnswer = {
-      questionId: currentQuestion.id,
-      answerType: "mock_audio",
-      mockRecordingState: hasMockRecording ? "recorded" : undefined,
-      mockAnswer: getMockAnswerForQuestion(currentQuestion),
-      ...getAnswerMetadata(currentQuestion),
-    };
-
-    const isSaved = await saveCurrentAnswer(answer);
-
-    if (isSaved) {
-      goToNextQuestionOrResult();
-    }
-  }
-
   async function handleSkipQuestion() {
     if (!session || isSkipping) {
       return;
@@ -1127,7 +928,8 @@ export function AssessmentSessionClient() {
       questionId: currentQuestion.id,
       answerType: "skipped",
       skipped: true,
-      ...getAnswerMetadata(currentQuestion),
+      isCorrect: false,
+      ...getAnswerMetadata(),
     };
     const isSaved = await saveCurrentAnswer(skippedAnswer);
 
@@ -1141,24 +943,6 @@ export function AssessmentSessionClient() {
         goToNextQuestionOrResult();
       }, 1200);
     }
-  }
-
-  function handleRequestHint() {
-    if (!session) return;
-
-    const currentQuestion = session.questions[currentQuestionIndex];
-    const maxHintLevel = getMaxHintLevel(currentQuestion);
-
-    if (maxHintLevel === 0) {
-      setActiveHint(undefined);
-      setHintOverlayVisible(false);
-      return;
-    }
-
-    const next = Math.min(maxHintLevel, hintLevel + 1);
-    setHintLevel(next);
-    setActiveHint(getHintForLevel(currentQuestion, next));
-    setHintOverlayVisible(true);
   }
 
   function handleReplayPrompt() {
@@ -1198,7 +982,8 @@ export function AssessmentSessionClient() {
               : "mock_audio",
             mockRecordingState: "recorded",
             mockAnswer,
-            ...getAnswerMetadata(currentQuestion),
+            isCorrect: outcome === "correct",
+            ...getAnswerMetadata(),
           };
 
           await saveCurrentAnswer(answer);
@@ -1253,9 +1038,6 @@ export function AssessmentSessionClient() {
   const isYesNoQuestion = isYesNoInteraction(currentQuestion.interactionType);
   const categoryLabel = getCategoryDisplay(currentQuestion);
   const promptText = getDisplayPrompt(currentQuestion.promptText);
-  const maxHintLevel = getMaxHintLevel(currentQuestion);
-  const isChoiceNextDisabled = isImageChoiceQuestion || isYesNoQuestion;
-
   return (
     <main className="flex h-dvh items-center justify-center overflow-hidden bg-[linear-gradient(180deg,#F6FEFF_0%,#EAF9FB_58%,#DFF3F5_100%)] p-6 text-[#123232]">
       <section className="relative mx-auto flex h-[calc(100dvh-48px)] max-h-[860px] min-h-[680px] w-[min(1500px,calc(100vw-48px))] flex-col overflow-hidden rounded-[36px] bg-white/95 px-9 py-7 shadow-[0_26px_70px_rgba(17,103,99,0.15)] ring-1 ring-[#CDEEEF]">
@@ -1274,26 +1056,26 @@ export function AssessmentSessionClient() {
         <LeafDecoration side="left" />
         <LeafDecoration side="right" />
 
-        <header className="relative z-10 grid h-[clamp(110px,15vh,128px)] shrink-0 grid-cols-[148px_minmax(0,1fr)_242px] items-start gap-5">
+        <header className="relative z-10 grid h-[clamp(158px,17vh,172px)] shrink-0 grid-cols-[148px_minmax(0,1fr)_242px] items-start gap-5">
           <div className="flex flex-col items-start gap-2.5">
             <Link
               className="flex h-[clamp(58px,9vh,68px)] w-[clamp(58px,9vh,68px)] items-center justify-center rounded-full bg-white text-[#0D5960] shadow-[0_10px_24px_rgba(17,103,99,0.12)] ring-1 ring-[#D5EFF0] transition hover:bg-[#F7FFFF] focus:outline-none focus:ring-4 focus:ring-[#1FA89C]/20 active:scale-[0.98]"
               href="/patient/home"
-              aria-label="ออกจากแบบฝึก"
+              aria-label="ออกจากแบบทดสอบ"
             >
               <CloseIcon className="h-[54%] w-[54%]" />
             </Link>
             <p className="text-base font-semibold leading-none text-[#13756F]">
-              ออกจากแบบฝึก
+              ออกจากแบบทดสอบ
             </p>
           </div>
 
           <div className="pt-2 text-center">
             <SessionProgress percent={progressPercent} />
-            <p className="mt-2.5 text-[clamp(1.18rem,1.9vw,1.45rem)] font-semibold leading-none text-[#183C3F]">
+            <p className="mt-5 text-[clamp(1.18rem,1.9vw,1.45rem)] font-semibold leading-none text-[#183C3F]">
               ข้อที่ {currentQuestion.order} จากทั้งหมด {session.totalQuestions} ข้อ
             </p>
-            <div className="mt-2.5 flex justify-center">
+            <div className="mt-4 flex justify-center">
               <SessionPill>{categoryLabel}</SessionPill>
             </div>
           </div>
@@ -1309,7 +1091,15 @@ export function AssessmentSessionClient() {
           </div>
         </header>
 
-        <div className="relative z-10 grid min-h-0 flex-1 grid-cols-[minmax(420px,0.92fr)_minmax(500px,1.08fr)] items-center gap-10 pb-[98px] pt-3">
+        <div
+          className={`relative z-10 grid min-h-0 flex-1 items-center px-5 pb-2 pt-[clamp(1.5rem,3vh,2.75rem)] ${
+            isImageChoiceQuestion
+              ? "grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] gap-6"
+              : isYesNoQuestion
+                ? "grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] gap-10"
+                : "grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-8"
+          }`}
+        >
           <div className="flex min-h-0 items-center justify-center">
             <QuestionCard question={currentQuestion} promptText={promptText} />
           </div>
@@ -1354,13 +1144,8 @@ export function AssessmentSessionClient() {
         </div>
 
         <BottomControls
-          hintLevel={hintLevel}
-          maxHintLevel={maxHintLevel}
           isSkipping={isSkipping}
-          isNextDisabled={isChoiceNextDisabled}
-          onHint={handleRequestHint}
           onSkip={handleSkipQuestion}
-          onNext={handleSaveAndContinue}
         />
 
         <FeedbackOverlay
@@ -1368,22 +1153,12 @@ export function AssessmentSessionClient() {
           type={feedbackType}
           mockAnswer={feedbackMockAnswer}
           expectedAnswer={feedbackExpected}
-          hintText={
-            feedbackType === "hint" ? feedbackMockAnswer : currentQuestion.hintText
-          }
           onClose={() => setFeedbackVisible(false)}
-        />
-
-        <HintOverlay
-          hint={activeHint}
-          onClose={() => setHintOverlayVisible(false)}
-          visible={hintOverlayVisible}
         />
 
         <ImageChoiceFeedbackOverlay
           expectedAnswer={currentQuestion.expectedAnswer}
           feedbackState={imageChoiceFeedbackState}
-          onClose={() => setImageChoiceFeedbackVisible(false)}
           visible={imageChoiceFeedbackVisible}
         />
       </section>

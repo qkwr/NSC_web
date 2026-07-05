@@ -113,7 +113,7 @@ export function AssessmentStartClient() {
                   </div>
                   <div>
                     <h1 className="text-[2.1rem] font-bold leading-tight text-[#123232] sm:text-[2.75rem]">
-                      แบบประเมินมาตรฐาน
+                      ทำแบบทดสอบก่อนใช้งาน
                     </h1>
                     <p className="mt-3 text-lg font-semibold text-[#667A7D] sm:text-xl">
                       ตอบเท่าที่ทำได้ ไม่ต้องกังวล 💗

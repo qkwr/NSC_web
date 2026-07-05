@@ -39,7 +39,12 @@ export async function getStandardAssessmentSession(): Promise<
     success: true,
     data: {
       ...mockStandardAssessmentSession,
-      questions: [...mockStandardAssessmentSession.questions],
+      questions: mockStandardAssessmentSession.questions.map((question) => {
+        const questionWithoutHints = { ...question };
+        delete questionWithoutHints.hints;
+        delete questionWithoutHints.hintText;
+        return questionWithoutHints;
+      }),
     },
   };
 }

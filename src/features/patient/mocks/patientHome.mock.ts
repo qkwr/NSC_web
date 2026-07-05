@@ -10,7 +10,7 @@ export const mockPatientHomeByCode: Record<string, PatientHomeData> = {
     nextAction: {
       type: "needs_standard_assessment",
       eyebrow: "แบบประเมินเริ่มต้น",
-      title: "ทำแบบประเมินมาตรฐาน",
+      title: "ทำแบบทดสอบก่อนใช้งาน",
       description:
         "เริ่มต้นด้วยแบบประเมินเพื่อให้ระบบวางแผนการฝึกที่เหมาะกับคุณ",
       progressPercent: 0,

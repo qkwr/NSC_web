@@ -482,7 +482,7 @@ export function NamingTrainingSessionClient({
             <p className="mt-3 text-xl font-bold text-[#183C3F]">
               ข้อที่ {currentQuestionIndex + 1} จากทั้งหมด {set.totalQuestions} ข้อ
             </p>
-            <p className="mx-auto mt-2 inline-flex min-h-[38px] items-center rounded-full bg-[#F2FBFB] px-5 text-base font-semibold text-[#12847D] ring-1 ring-[#CDEEEF]">
+            <p className="mx-auto mt-6 inline-flex min-h-[38px] items-center rounded-full bg-[#F2FBFB] px-5 text-base font-semibold text-[#12847D] ring-1 ring-[#CDEEEF]">
               หมวดสัตว์
             </p>
           </div>
