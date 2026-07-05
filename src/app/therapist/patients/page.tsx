@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getTherapistDashboardData } from "@/features/therapist/services/therapistDashboardService";
+import TherapistPatientList from "@/features/therapist/components/TherapistPatientList";
 
 export default async function TherapistPatientsPage() {
   const result = await getTherapistDashboardData();
@@ -17,36 +18,26 @@ export default async function TherapistPatientsPage() {
   return (
     <main className="min-h-dvh bg-[linear-gradient(180deg,#F6FEFF_0%,#EAF9FB_58%,#DFF3F5_100%)] px-5 py-6 text-[#123232] sm:px-8">
       <div className="mx-auto w-full max-w-[980px]">
-        <Link
-          className="mb-5 inline-flex min-h-[56px] items-center justify-center rounded-full bg-white px-7 text-lg font-bold text-[#13756F] shadow-[0_10px_24px_rgba(17,103,99,0.1)] ring-1 ring-[#CDEEEF] transition hover:bg-[#F7FFFF]"
-          href="/therapist/dashboard"
-        >
-          กลับแดชบอร์ด
-        </Link>
-        <h1 className="text-[2.4rem] font-bold leading-tight sm:text-[3rem]">
-          รายชื่อผู้ป่วย
-        </h1>
-        <div className="mt-6 grid gap-4">
-          {result.data.patients.map((patient) => (
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
             <Link
-              key={patient.id}
-              className="rounded-[30px] bg-white px-6 py-5 shadow-[0_16px_36px_rgba(17,103,99,0.09)] ring-1 ring-[#CDEEEF] transition hover:bg-[#F8FEFF]"
-              href={`/therapist/patients/${patient.id}`}
+              className="inline-flex min-h-[56px] items-center justify-center rounded-full bg-white px-7 text-lg font-bold text-[#13756F] shadow-[0_10px_24px_rgba(17,103,99,0.1)] ring-1 ring-[#CDEEEF] transition hover:bg-[#F7FFFF]"
+              href="/therapist/dashboard"
             >
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-2xl font-bold">{patient.name}</p>
-                  <p className="mt-1 text-lg font-semibold text-[#557276]">
-                    {patient.code} · อายุ {patient.age} ปี
-                  </p>
-                </div>
-                <p className="rounded-full bg-[#EAF9F8] px-5 py-2 text-lg font-bold text-[#0F756F]">
-                  PN002 {patient.pn002ProgressPercent}%
-                </p>
-              </div>
+              กลับแดชบอร์ด
             </Link>
-          ))}
+            <h1 className="mt-5 text-[2.4rem] font-bold leading-tight sm:text-[3rem]">
+              รายชื่อผู้ป่วย
+            </h1>
+          </div>
+          <Link
+            href="/therapist/patients/new"
+            className="inline-flex min-h-[56px] items-center justify-center rounded-full bg-[#1FA89C] px-7 text-lg font-bold text-white shadow-[0_10px_24px_rgba(31,168,156,0.22)] transition hover:bg-[#178F84]"
+          >
+            เพิ่มผู้รับบริการใหม่
+          </Link>
         </div>
+        <TherapistPatientList patients={result.data.patients} />
       </div>
     </main>
   );

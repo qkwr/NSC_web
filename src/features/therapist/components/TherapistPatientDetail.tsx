@@ -3,8 +3,7 @@ import type { TherapistPatientDetail as TherapistPatientDetailData } from "../ty
 import type { CategoryScore, ProgressBySession } from "../types/therapistClinical.types";
 import { mockCategoryScores, mockProgressBySession } from "../mocks/therapistClinical.mock";
 
-import TherapistPatientDetailClient from "./TherapistPatientDetailClient";
-
+import TherapistPatientDetailClient from "./TherapistPatientDetailClient";import TherapistPatientActions from "./TherapistPatientActions";
 type TherapistPatientDetailProps = {
   patient: TherapistPatientDetailData;
 };
