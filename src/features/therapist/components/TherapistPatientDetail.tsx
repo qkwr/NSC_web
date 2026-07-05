@@ -1,5 +1,9 @@
 import Link from "next/link";
 import type { TherapistPatientDetail as TherapistPatientDetailData } from "../types/therapist.types";
+import type { CategoryScore, ProgressBySession } from "../types/therapistClinical.types";
+import { mockCategoryScores, mockProgressBySession } from "../mocks/therapistClinical.mock";
+
+import TherapistPatientDetailClient from "./TherapistPatientDetailClient";
 
 type TherapistPatientDetailProps = {
   patient: TherapistPatientDetailData;
@@ -102,6 +106,8 @@ export function TherapistPatientDetail({
           </div>
         </section>
 
+        {/* pass mock data directly to client components */}
+
         <section className="mt-6 grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
           <article className="rounded-[34px] bg-white px-7 py-7 shadow-[0_18px_48px_rgba(17,103,99,0.1)] ring-1 ring-[#CDEEEF]">
             <h2 className="text-2xl font-bold">{patient.pn001Summary.title}</h2>
@@ -160,6 +166,12 @@ export function TherapistPatientDetail({
             </div>
           </article>
         </section>
+
+        <TherapistPatientDetailClient
+          patient={patient}
+          categoryScores={mockCategoryScores as CategoryScore[]}
+          progressBySession={mockProgressBySession as ProgressBySession[]}
+        />
       </div>
     </main>
   );
