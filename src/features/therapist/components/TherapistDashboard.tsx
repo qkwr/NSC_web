@@ -58,14 +58,14 @@ export function TherapistDashboard({ data }: TherapistDashboardProps) {
 
         <section className="grid gap-4 md:grid-cols-3">
           <div className="rounded-[30px] bg-white px-7 py-6 shadow-[0_16px_36px_rgba(17,103,99,0.09)] ring-1 ring-[#CDEEEF]">
-            <p className="text-lg font-bold text-[#557276]">ผู้ป่วยทั้งหมด</p>
+            <p className="text-lg font-bold text-[#557276]">ผู้รับบริการทั้งหมด</p>
             <p className="mt-3 text-5xl font-bold text-[#0F756F]">
               {data.totalPatients}
             </p>
           </div>
           <div className="rounded-[30px] bg-white px-7 py-6 shadow-[0_16px_36px_rgba(17,103,99,0.09)] ring-1 ring-[#CDEEEF]">
             <p className="text-lg font-bold text-[#557276]">
-              ผู้ป่วยที่ฝึกล่าสุด
+              ผู้รับบริการที่ฝึกล่าสุด
             </p>
             <p className="mt-3 text-5xl font-bold text-[#0F756F]">
               {data.activeToday}
@@ -73,7 +73,7 @@ export function TherapistDashboard({ data }: TherapistDashboardProps) {
           </div>
           <div className="rounded-[30px] bg-[#FFF7E8] px-7 py-6 shadow-[0_16px_36px_rgba(139,117,56,0.08)] ring-1 ring-[#F3EAC8]">
             <p className="text-lg font-bold text-[#6A5A2D]">
-              ผู้ป่วยที่ควรติดตาม
+              ผู้รับบริการที่ควรติดตาม
             </p>
             <p className="mt-3 text-5xl font-bold text-[#9A6A13]">
               {data.followUpCount}
@@ -83,7 +83,7 @@ export function TherapistDashboard({ data }: TherapistDashboardProps) {
 
         <section className="mt-6 grid gap-6 lg:grid-cols-[1.25fr_0.75fr]">
           <div className="rounded-[34px] bg-white px-6 py-6 shadow-[0_18px_48px_rgba(17,103,99,0.1)] ring-1 ring-[#CDEEEF] sm:px-7">
-            <h2 className="text-2xl font-bold">รายชื่อผู้ป่วย</h2>
+            <h2 className="text-2xl font-bold">รายชื่อผู้รับบริการ</h2>
             <div className="mt-5 grid gap-4">
               {data.patients.map((patient) => (
                 <article
@@ -107,11 +107,11 @@ export function TherapistDashboard({ data }: TherapistDashboardProps) {
                     </p>
                     <div className="mt-4 grid gap-3 sm:grid-cols-2">
                       <ProgressLine
-                        label="PN001 Assessment"
+                        label="แบบประเมินมาตรฐาน"
                         value={patient.pn001ProgressPercent}
                       />
                       <ProgressLine
-                        label="PN002 เรียกชื่อภาพ"
+                        label="แบบฝึกเรียกชื่อภาพ"
                         value={patient.pn002ProgressPercent}
                       />
                     </div>

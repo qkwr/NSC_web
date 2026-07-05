@@ -78,7 +78,7 @@ export default function NewTherapistPatientPage() {
               />
             </label>
             <label className="space-y-2">
-              <span className="font-semibold">รหัส PN001</span>
+              <span className="font-semibold">รหัสผู้รับบริการ</span>
               <input
                 className="w-full rounded-xl border border-[#D7EFF0] bg-[#F8FEFF] px-4 py-3"
                 value={form.code}

@@ -5,6 +5,7 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 import { updatePatientProfile } from "../services/therapistDashboardService";
 import type { PatientProfile } from "../types/therapist.types";
+import { formatThaiBirthDate } from "../utils/dateFormat";
 
 function FormSection({
   title,
@@ -39,15 +40,62 @@ function Field({
 const inputClass =
   "w-full rounded-xl border border-[#D7EFF0] bg-white px-4 py-3 text-[#123232]";
 
+function createEditableProfile(
+  patientId: string,
+  initialProfile?: Partial<PatientProfile>,
+): PatientProfile {
+  const fallbackProfile: PatientProfile = {
+    id: patientId,
+    patientCode: "",
+    fullName: "",
+    age: 0,
+    gender: "",
+    birthDate: "",
+    province: "",
+    postalCode: "",
+    occupation: "",
+    caregiverName: "",
+    caregiverRelationship: "",
+    familyStatus: "",
+    householdMembersCount: 0,
+    spouseName: "",
+    hasChildren: false,
+    childrenCount: 0,
+  };
+
+  return {
+    ...fallbackProfile,
+    ...initialProfile,
+    id: initialProfile?.id || patientId,
+    patientCode: initialProfile?.patientCode ?? "",
+    fullName: initialProfile?.fullName ?? "",
+    age: initialProfile?.age ?? 0,
+    gender: initialProfile?.gender ?? "",
+    birthDate: initialProfile?.birthDate ?? "",
+    province: initialProfile?.province ?? "",
+    postalCode: initialProfile?.postalCode ?? "",
+    occupation: initialProfile?.occupation ?? "",
+    caregiverName: initialProfile?.caregiverName ?? "",
+    caregiverRelationship: initialProfile?.caregiverRelationship ?? "",
+    familyStatus: initialProfile?.familyStatus ?? "",
+    householdMembersCount: initialProfile?.householdMembersCount ?? 0,
+    spouseName: initialProfile?.spouseName ?? "",
+    hasChildren: initialProfile?.hasChildren ?? false,
+    childrenCount: initialProfile?.childrenCount ?? 0,
+  };
+}
+
 export default function TherapistPatientEditForm({
   patientId,
   initialProfile,
 }: {
   patientId: string;
-  initialProfile: PatientProfile;
+  initialProfile?: PatientProfile;
 }) {
   const router = useRouter();
-  const [profile, setProfile] = useState<PatientProfile>(initialProfile);
+  const [profile, setProfile] = useState<PatientProfile>(() =>
+    createEditableProfile(patientId, initialProfile),
+  );
   const [isSaving, setIsSaving] = useState(false);
 
   function updateProfile(patch: Partial<PatientProfile>) {
@@ -124,9 +172,13 @@ export default function TherapistPatientEditForm({
             <Field label="วันเกิด">
               <input
                 className={inputClass}
+                placeholder="เช่น 2499-01-12"
                 value={profile.birthDate}
                 onChange={(event) => updateProfile({ birthDate: event.target.value })}
               />
+              <p className="text-sm font-medium text-[#557276]">
+                แสดงผล: {formatThaiBirthDate(profile.birthDate)}
+              </p>
             </Field>
 
             <Field label="จังหวัดภูมิลำเนา">

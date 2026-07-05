@@ -473,11 +473,11 @@ function InsightSummary({
           แนวโน้มล่าสุด: <span className="text-[#2F5E9E]">{trendLabel}</span>
         </p>
         <p className="rounded-2xl bg-[#FFF1F3] px-4 py-3 text-base font-semibold text-[#45686A]">
-          ข้อควรระวัง: ผลจาก AI/ASR เป็นข้อมูลเบื้องต้น ต้องตรวจซ้ำจากเสียงผู้ป่วย
+          ข้อควรระวัง: ผลจาก AI/ASR เป็นข้อมูลเบื้องต้น ต้องตรวจซ้ำจากเสียงผู้รับบริการ
         </p>
       </div>
       <p className="mt-4 rounded-2xl bg-[#F8FEFF] px-4 py-3 text-sm font-semibold leading-6 text-[#557276] ring-1 ring-[#D7EFF0]">
-        ระบบช่วยสรุปเบื้องต้น นักแก้ไขการพูดควรตรวจยืนยันจากเสียงผู้ป่วยอีกครั้ง
+        ระบบช่วยสรุปเบื้องต้น นักแก้ไขการพูดควรตรวจยืนยันจากเสียงผู้รับบริการอีกครั้ง
       </p>
     </article>
   );

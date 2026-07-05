@@ -83,7 +83,7 @@ export async function getTherapistPatientDetail(
   if (!patient) {
     return {
       success: false,
-      errorMessage: "ไม่พบข้อมูลผู้ป่วย",
+      errorMessage: "ไม่พบข้อมูลผู้รับบริการ",
     };
   }
 
@@ -123,7 +123,7 @@ export async function updatePatient(
   if (index === -1) {
     return {
       success: false,
-      errorMessage: "ไม่พบข้อมูลผู้ป่วย",
+      errorMessage: "ไม่พบข้อมูลผู้รับบริการ",
     };
   }
 
@@ -176,7 +176,7 @@ export async function deletePatient(
   if (index === -1) {
     return {
       success: false,
-      errorMessage: "ไม่พบข้อมูลผู้ป่วย",
+      errorMessage: "ไม่พบข้อมูลผู้รับบริการ",
     };
   }
 

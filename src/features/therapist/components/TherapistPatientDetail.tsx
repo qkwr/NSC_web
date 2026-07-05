@@ -1,5 +1,8 @@
 import Link from "next/link";
-import type { TherapistPatientDetail as TherapistPatientDetailData } from "../types/therapist.types";
+import type {
+  PatientProfile,
+  TherapistPatientDetail as TherapistPatientDetailData,
+} from "../types/therapist.types";
 
 import TherapistPatientActions from "./TherapistPatientActions";
 
@@ -39,6 +42,43 @@ function ProfileItem({ label, value }: { label: string; value: string | number }
   );
 }
 
+function getSafePatientProfile(
+  patient: TherapistPatientDetailData,
+): PatientProfile {
+  const existingProfile = patient.patientProfile as
+    | Partial<PatientProfile>
+    | undefined;
+
+  const fallbackProfile: PatientProfile = {
+    id: patient.id,
+    patientCode: patient.code,
+    fullName: patient.name,
+    age: patient.age,
+    gender: "",
+    birthDate: "",
+    province: "-",
+    postalCode: "",
+    occupation: "",
+    caregiverName: patient.caregiverName || "-",
+    caregiverRelationship: "-",
+    familyStatus: "-",
+    householdMembersCount: 0,
+    spouseName: "",
+    hasChildren: false,
+    childrenCount: 0,
+  };
+
+  return {
+    ...fallbackProfile,
+    ...existingProfile,
+    id: existingProfile?.id || patient.id,
+    patientCode: existingProfile?.patientCode || patient.code,
+    fullName: existingProfile?.fullName || patient.name,
+    age: existingProfile?.age || patient.age,
+    caregiverName: existingProfile?.caregiverName || patient.caregiverName || "-",
+  };
+}
+
 function WordChips({
   tone,
   words,
@@ -70,7 +110,7 @@ function WordChips({
 export function TherapistPatientDetail({
   patient,
 }: TherapistPatientDetailProps) {
-  const profile = patient.patientProfile;
+  const profile = getSafePatientProfile(patient);
   const childrenSummary = profile.hasChildren
     ? `มีลูก ${profile.childrenCount} คน`
     : "ไม่มีลูก";

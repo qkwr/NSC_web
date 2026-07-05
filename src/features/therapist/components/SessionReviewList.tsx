@@ -33,9 +33,9 @@ export function SessionReviewList({
 
   return (
     <div>
-      <h3 className="mb-3 text-xl font-bold">ตรวจผลจากเสียงผู้ป่วย</h3>
+      <h3 className="mb-3 text-xl font-bold">ตรวจผลจากเสียงผู้รับบริการ</h3>
       <p className="mb-3 text-sm text-[#557276]">
-        ผลจาก AI เป็นข้อมูลเบื้องต้น กรุณาตรวจซ้ำจากเสียงผู้ป่วย
+        ผลจาก AI เป็นข้อมูลเบื้องต้น กรุณาตรวจซ้ำจากเสียงผู้รับบริการ
       </p>
       <div className="space-y-4">
         {items.map((it) => (
@@ -56,6 +56,7 @@ export function SessionReviewList({
               <div className="flex items-center gap-2">
                 <label className="text-sm">สถานะตรวจของนักบำบัด:</label>
                 <select
+                  aria-label="สถานะตรวจสอบโดยนักแก้ไขการพูด"
                   value={it.therapistReviewStatus}
                   onChange={(e) => updateItem(it.id, { therapistReviewStatus: e.target.value as
                     | "not-reviewed"
@@ -73,6 +74,7 @@ export function SessionReviewList({
               </div>
               <div>
                 <textarea
+                  aria-label="โน้ตจากนักแก้ไขการพูด"
                   placeholder="โน้ตจากนักแก้ไขการพูด"
                   value={it.therapistNote}
                   onChange={(e) => updateItem(it.id, { therapistNote: e.target.value })}

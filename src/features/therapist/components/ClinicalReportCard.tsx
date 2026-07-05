@@ -45,6 +45,7 @@ export function ClinicalReportCard({
       </div>
 
       <textarea
+        aria-label="เนื้อหารายงานผลรายบุคคล"
         className="mt-4 min-h-[260px] w-full rounded-[24px] border border-[#D7EFF0] bg-[#F8FEFF] p-4 text-sm font-medium leading-7 text-[#123232]"
         value={text}
         onChange={(event) => setText(event.target.value)}

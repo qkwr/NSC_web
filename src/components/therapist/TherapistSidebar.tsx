@@ -43,7 +43,7 @@ export default function TherapistSidebar() {
       <div className="mt-10 rounded-[28px] bg-[#F6FEFF] p-5 ring-1 ring-[#D7EFF0]">
         <p className="text-sm font-bold text-[#12847D]">อย่าลืม</p>
         <p className="mt-3 text-sm leading-6 text-[#557276]">
-          ตรวจสอบเสียงผู้ป่วยทุกครั้งก่อนสรุปผล ไม่เชื่อ AI/ASR 100%.
+          ตรวจสอบเสียงผู้รับบริการทุกครั้งก่อนสรุปผล ไม่เชื่อ AI/ASR 100%.
         </p>
       </div>
 

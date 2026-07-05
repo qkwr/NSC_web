@@ -516,8 +516,10 @@ export function NamingTrainingSessionClient({
                 ))}
               </div>
               <button
+                aria-label={getMicText(recordingState)}
                 className="relative flex h-[clamp(156px,22vh,198px)] w-[clamp(156px,22vh,198px)] items-center justify-center rounded-full outline-none transition hover:scale-[1.02] focus:ring-4 focus:ring-[#1FA89C]/25 active:scale-[0.98]"
                 onClick={handleMicrophoneToggle}
+                title={getMicText(recordingState)}
                 type="button"
               >
                 <span

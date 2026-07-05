@@ -27,7 +27,7 @@ export default async function TherapistPatientsPage() {
               กลับแดชบอร์ด
             </Link>
             <h1 className="mt-5 text-[2.4rem] font-bold leading-tight sm:text-[3rem]">
-              รายชื่อผู้ป่วย
+              รายชื่อผู้รับบริการ
             </h1>
           </div>
           <Link
