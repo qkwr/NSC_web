@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 
 const navItems = [
   { label: "แดชบอร์ด", href: "/therapist/dashboard" },
-  { label: "รายงานผล", href: "/therapist/reports" },
   { label: "รายการผู้รับบริการ", href: "/therapist/patients" },
 ];
 

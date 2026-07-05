@@ -1,9 +1,8 @@
 import Link from "next/link";
 import type { TherapistPatientDetail as TherapistPatientDetailData } from "../types/therapist.types";
-import type { CategoryScore, ProgressBySession } from "../types/therapistClinical.types";
-import { mockCategoryScores, mockProgressBySession } from "../mocks/therapistClinical.mock";
 
-import TherapistPatientDetailClient from "./TherapistPatientDetailClient";import TherapistPatientActions from "./TherapistPatientActions";
+import TherapistPatientActions from "./TherapistPatientActions";
+
 type TherapistPatientDetailProps = {
   patient: TherapistPatientDetailData;
 };
@@ -27,6 +26,15 @@ function ProgressLine({
           style={{ width: `${value}%` }}
         />
       </div>
+    </div>
+  );
+}
+
+function ProfileItem({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="rounded-2xl bg-[#F8FEFF] px-4 py-3 ring-1 ring-[#D7EFF0]">
+      <p className="text-sm font-bold text-[#12847D]">{label}</p>
+      <p className="mt-1 text-base font-semibold text-[#123232]">{value}</p>
     </div>
   );
 }
@@ -62,63 +70,60 @@ function WordChips({
 export function TherapistPatientDetail({
   patient,
 }: TherapistPatientDetailProps) {
+  const profile = patient.patientProfile;
+  const childrenSummary = profile.hasChildren
+    ? `มีลูก ${profile.childrenCount} คน`
+    : "ไม่มีลูก";
+
   return (
     <main className="min-h-dvh bg-[linear-gradient(180deg,#F6FEFF_0%,#EAF9FB_58%,#DFF3F5_100%)] px-5 py-6 text-[#123232] sm:px-8">
       <div className="mx-auto w-full max-w-[1180px]">
         <Link
-          className="mb-5 inline-flex min-h-[56px] items-center justify-center rounded-full bg-white px-7 text-lg font-bold text-[#13756F] shadow-[0_10px_24px_rgba(17,103,99,0.1)] ring-1 ring-[#CDEEEF] transition hover:bg-[#F7FFFF]"
-          href="/therapist/dashboard"
+          href="/therapist/patients"
+          className="mb-5 inline-flex min-h-[50px] items-center justify-center rounded-full bg-white px-6 text-base font-bold text-[#13756F] shadow-[0_10px_24px_rgba(17,103,99,0.1)] ring-1 ring-[#CDEEEF] transition hover:bg-[#F7FFFF]"
         >
-          กลับแดชบอร์ด
+          กลับไปรายการผู้รับบริการ
         </Link>
 
         <section className="rounded-[36px] bg-white px-7 py-8 shadow-[0_26px_70px_rgba(24,112,108,0.13)] ring-1 ring-[#CDEEEF] sm:px-9">
           <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
             <div>
               <p className="inline-flex min-h-[38px] items-center rounded-full bg-[#F2FBFB] px-5 text-base font-semibold text-[#12847D] ring-1 ring-[#CDEEEF]">
-                {patient.code}
+                {profile.patientCode}
               </p>
               <h1 className="mt-4 text-[2.45rem] font-bold leading-tight sm:text-[3.1rem]">
-                {patient.name}
+                {profile.fullName}
               </h1>
-              <p className="mt-3 text-xl font-semibold text-[#557276]">
-                อายุ {patient.age} ปี · ผู้ดูแล {patient.caregiverName}
-              </p>
-              <p className="mt-2 text-lg font-semibold text-[#557276]">
-                วันที่ประเมินล่าสุด {patient.latestAssessmentDate}
-              </p>
+              <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <ProfileItem label="อายุ" value={`${profile.age} ปี`} />
+                <ProfileItem label="จังหวัด" value={profile.province} />
+                <ProfileItem
+                  label="ผู้ดูแล"
+                  value={`${profile.caregiverName} (${profile.caregiverRelationship})`}
+                />
+                <ProfileItem
+                  label="สมาชิกในครอบครัว"
+                  value={`${profile.householdMembersCount} คน`}
+                />
+                <ProfileItem label="ข้อมูลบุตร" value={childrenSummary} />
+              </div>
             </div>
 
             <div className="rounded-[28px] bg-[#F8FEFF] p-6 ring-1 ring-[#D7EFF0]">
-              <h2 className="text-2xl font-bold">ความคืบหน้าการฝึก</h2>
+              <h2 className="text-2xl font-bold">ความคืบหน้าแบบฝึก</h2>
               <div className="mt-5 grid gap-4">
                 <ProgressLine
-                  label="PN001 Assessment"
-                  value={patient.pn001ProgressPercent}
-                />
-                <ProgressLine
-                  label="PN002 เรียกชื่อภาพ"
+                  label="แบบฝึกเรียกชื่อภาพ"
                   value={patient.pn002ProgressPercent}
                 />
               </div>
             </div>
           </div>
+
+          <TherapistPatientActions patientId={patient.id} />
         </section>
 
-        {/* pass mock data directly to client components */}
-
-        <section className="mt-6 grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
-          <article className="rounded-[34px] bg-white px-7 py-7 shadow-[0_18px_48px_rgba(17,103,99,0.1)] ring-1 ring-[#CDEEEF]">
-            <h2 className="text-2xl font-bold">{patient.pn001Summary.title}</h2>
-            <p className="mt-4 text-[2.4rem] font-bold text-[#0F756F]">
-              {patient.pn001Summary.completedQuestions}/
-              {patient.pn001Summary.totalQuestions}
-            </p>
-            <p className="mt-3 text-lg font-medium leading-8 text-[#557276]">
-              {patient.pn001Summary.note}
-            </p>
-          </article>
-
+        <section className="mt-6">
           <article className="rounded-[34px] bg-white px-7 py-7 shadow-[0_18px_48px_rgba(17,103,99,0.1)] ring-1 ring-[#CDEEEF]">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
@@ -148,29 +153,8 @@ export function TherapistPatientDetail({
                 <WordChips tone="amber" words={patient.pn002Naming.wordsToReview} />
               </div>
             </div>
-
-            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-              <button
-                className="min-h-[58px] flex-1 rounded-full bg-[#1FA89C] px-6 text-lg font-bold text-white shadow-[0_12px_26px_rgba(31,168,156,0.22)]"
-                type="button"
-              >
-                ดูรายละเอียดแบบฝึก
-              </button>
-              <button
-                className="min-h-[58px] flex-1 rounded-full bg-white px-6 text-lg font-bold text-[#13756F] shadow-[0_10px_24px_rgba(17,103,99,0.1)] ring-1 ring-[#CDEEEF]"
-                type="button"
-              >
-                ปรับแผนฝึก
-              </button>
-            </div>
           </article>
         </section>
-
-        <TherapistPatientDetailClient
-          patient={patient}
-          categoryScores={mockCategoryScores as CategoryScore[]}
-          progressBySession={mockProgressBySession as ProgressBySession[]}
-        />
       </div>
     </main>
   );

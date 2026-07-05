@@ -8,7 +8,9 @@ export default function TherapistPatientActions({ patientId }: { patientId: stri
   const router = useRouter();
 
   async function handleDelete() {
-    const confirmed = window.confirm("คุณแน่ใจว่าต้องการลบผู้รับบริการรายนี้? การกระทำนี้ไม่สามารถย้อนกลับได้");
+    const confirmed = window.confirm(
+      "คุณแน่ใจว่าต้องการลบผู้รับบริการรายนี้? การกระทำนี้ไม่สามารถย้อนกลับได้",
+    );
     if (!confirmed) return;
 
     const result = await deletePatient(patientId);
@@ -21,17 +23,23 @@ export default function TherapistPatientActions({ patientId }: { patientId: stri
   }
 
   return (
-    <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
+    <div className="mt-6 grid gap-3 sm:grid-cols-3">
+      <Link
+        href={`/therapist/patients/${patientId}/training-detail`}
+        className="inline-flex min-h-[58px] items-center justify-center rounded-full bg-[#1FA89C] px-6 text-center text-lg font-bold text-white shadow-[0_12px_26px_rgba(31,168,156,0.22)] transition hover:bg-[#178F84]"
+      >
+        รายละเอียดการฝึก
+      </Link>
       <Link
         href={`/therapist/patients/${patientId}/edit`}
-        className="min-h-[58px] flex-1 rounded-full bg-[#1FA89C] px-6 text-lg font-bold text-white shadow-[0_12px_26px_rgba(31,168,156,0.22)] hover:bg-[#178F84]"
+        className="inline-flex min-h-[58px] items-center justify-center rounded-full bg-white px-6 text-center text-lg font-bold text-[#13756F] shadow-[0_10px_24px_rgba(17,103,99,0.1)] ring-1 ring-[#CDEEEF] transition hover:bg-[#F7FFFF]"
       >
         แก้ไขข้อมูล
       </Link>
       <button
         type="button"
         onClick={handleDelete}
-        className="min-h-[58px] flex-1 rounded-full bg-[#FFEEF0] px-6 text-lg font-bold text-[#B42318] shadow-[0_10px_24px_rgba(180,51,60,0.16)] hover:bg-[#FFE7E9]"
+        className="min-h-[58px] rounded-full bg-[#FFEEF0] px-6 text-lg font-bold text-[#B42318] shadow-[0_10px_24px_rgba(180,51,60,0.16)] transition hover:bg-[#FFE7E9]"
       >
         ลบผู้รับบริการ
       </button>

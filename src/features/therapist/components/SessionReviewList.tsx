@@ -4,8 +4,14 @@ import React, { useEffect, useState } from "react";
 import type { SessionResultItem } from "../types/therapistClinical.types";
 import { getPatientSessionResults } from "../services/therapistClinicalService";
 
-export function SessionReviewList({ patientId }: { patientId: string }) {
-  const [items, setItems] = useState<SessionResultItem[]>([]);
+export function SessionReviewList({
+  patientId,
+  initialItems = [],
+}: {
+  patientId: string;
+  initialItems?: SessionResultItem[];
+}) {
+  const [items, setItems] = useState<SessionResultItem[]>(initialItems);
 
   useEffect(() => {
     let active = true;

@@ -28,7 +28,27 @@ export type TherapistDashboardData = {
   recentSessions: TherapistRecentSession[];
 };
 
+export type PatientProfile = {
+  id: string;
+  patientCode: string;
+  fullName: string;
+  age: number;
+  gender: string;
+  birthDate: string;
+  province: string;
+  postalCode: string;
+  occupation: string;
+  caregiverName: string;
+  caregiverRelationship: string;
+  familyStatus: string;
+  householdMembersCount: number;
+  spouseName: string;
+  hasChildren: boolean;
+  childrenCount: number;
+};
+
 export type TherapistPatientDetail = TherapistPatientSummary & {
+  patientProfile: PatientProfile;
   caregiverName: string;
   latestAssessmentDate: string;
   pn001Summary: {
@@ -38,7 +58,7 @@ export type TherapistPatientDetail = TherapistPatientSummary & {
     note: string;
   };
   pn002Naming: {
-    categoryName: "สัตว์";
+    categoryName: string;
     latestSetTitle: string;
     completedQuestions: number;
     totalQuestions: number;

@@ -20,6 +20,7 @@ export async function getPatientClinicalOverview(patientId: string): Promise<{
   data: { categoryScores: CategoryScore[]; progressBySession: ProgressBySession[] };
 } | { success: false; errorMessage: string }> {
   await waitForMockApi();
+  void patientId;
 
   return { success: true, data: { categoryScores: mockCategoryScores, progressBySession: mockProgressBySession } };
 }
@@ -29,6 +30,7 @@ export async function getPatientSessionResults(patientId: string): Promise<{
   data: SessionResultItem[];
 } | { success: false; errorMessage: string }> {
   await waitForMockApi();
+  void patientId;
 
   return { success: true, data: mockSessionResults };
 }

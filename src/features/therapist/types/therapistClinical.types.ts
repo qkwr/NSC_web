@@ -22,3 +22,11 @@ export type SessionResultItem = {
   therapistReviewStatus?: "not-reviewed" | "correct" | "incorrect" | "needs-review";
   therapistNote?: string;
 };
+
+export type ResponseStatusByCategory = {
+  category: string;
+  correct: number;
+  incorrect: number;
+  needsPractice: number;
+  pendingReview: number;
+};
