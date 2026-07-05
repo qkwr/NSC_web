@@ -462,12 +462,13 @@ export function NamingTrainingSessionClient({
         />
 
         <header className="relative z-10 grid gap-4 lg:grid-cols-[180px_minmax(0,1fr)_180px]">
-          <Link
-            className="inline-flex min-h-[52px] w-fit items-center justify-center rounded-full bg-white px-6 text-base font-semibold text-[#13756F] shadow-[0_10px_24px_rgba(17,103,99,0.1)] ring-1 ring-[#CDEEEF] transition hover:bg-[#F7FFFF]"
-            href="/patient/training/naming/animals"
-          >
-            ออกจากแบบฝึก
-          </Link>
+            <button
+              className="inline-flex min-h-[52px] w-fit items-center justify-center rounded-full bg-white px-6 text-base font-semibold text-[#13756F] shadow-[0_10px_24px_rgba(17,103,99,0.1)] ring-1 ring-[#CDEEEF] transition hover:bg-[#F7FFFF]"
+              onClick={() => router.replace("/patient/training/today")}
+              type="button"
+            >
+              ออกจากแบบฝึก
+            </button>
 
           <div className="text-center">
             <div className="mx-auto max-w-[820px]">

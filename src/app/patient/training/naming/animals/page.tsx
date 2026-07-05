@@ -1,5 +1,6 @@
 // NOTE: This route is a dev/internal preview of the PN002 naming animal sets.
 // Patient-facing flow should start from /patient/training/today and follow assigned training plans.
+import PatientRouteGuard from "@/components/PatientRouteGuard";
 import { NamingAnimalSets } from "@/features/training/components/NamingAnimalSets";
 import { getNamingAnimalSets } from "@/features/training/services/pn002NamingService";
 
@@ -16,5 +17,10 @@ export default async function PatientNamingAnimalsPage() {
     );
   }
 
-  return <NamingAnimalSets sets={result.data} />;
+  return (
+    <>
+      <PatientRouteGuard />
+      <NamingAnimalSets sets={result.data} />
+    </>
+  );
 }

@@ -1,5 +1,6 @@
 // NOTE: This route is a dev/internal preview of the PN002 naming module.
 // Patient-facing flow should start from /patient/training/today and use assigned training plans.
+import PatientRouteGuard from "@/components/PatientRouteGuard";
 import { NamingTrainingLanding } from "@/features/training/components/NamingTrainingLanding";
 import { getPn002NamingModule } from "@/features/training/services/pn002NamingService";
 
@@ -16,5 +17,10 @@ export default async function PatientNamingTrainingPage() {
     );
   }
 
-  return <NamingTrainingLanding module={result.data} />;
+  return (
+    <>
+      <PatientRouteGuard />
+      <NamingTrainingLanding module={result.data} />
+    </>
+  );
 }
