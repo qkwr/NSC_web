@@ -28,7 +28,7 @@ export async function getTodayTrainingPlan(
   }
 
   const assignedSetId = "set-1" as const;
-  const sessionResult = await createMockNamingSession(assignedSetId);
+  const sessionResult = await createMockNamingSession(assignedSetId, patientId);
 
   if (!sessionResult.success) {
     return createFailure(sessionResult.errorMessage);

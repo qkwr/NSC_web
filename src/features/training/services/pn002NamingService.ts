@@ -18,6 +18,8 @@ import type {
 } from "../types/pn002Naming.types";
 
 const MOCK_API_DELAY_MS = 180;
+const NAMING_SESSIONS_STORAGE_KEY = "nsc_pn002_naming_sessions";
+const NAMING_RESPONSES_STORAGE_KEY = "nsc_pn002_naming_responses";
 
 async function waitForMockApi() {
   await new Promise((resolve) => setTimeout(resolve, MOCK_API_DELAY_MS));
@@ -29,6 +31,108 @@ function createSuccess<T>(data: T): TrainingServiceResult<T> {
 
 function createFailure<T>(errorMessage: string): TrainingServiceResult<T> {
   return { success: false, errorMessage };
+}
+
+function canUseLocalStorage() {
+  return typeof window !== "undefined" && Boolean(window.localStorage);
+}
+
+function readStoredNamingSessions(): NamingSessionState[] {
+  if (!canUseLocalStorage()) {
+    return [];
+  }
+
+  try {
+    const rawValue = window.localStorage.getItem(NAMING_SESSIONS_STORAGE_KEY);
+    if (!rawValue) {
+      return [];
+    }
+
+    const parsed = JSON.parse(rawValue);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeStoredNamingSessions(sessions: NamingSessionState[]) {
+  if (!canUseLocalStorage()) {
+    return;
+  }
+
+  window.localStorage.setItem(
+    NAMING_SESSIONS_STORAGE_KEY,
+    JSON.stringify(sessions),
+  );
+}
+
+function readStoredNamingResponses(): NamingResponse[] {
+  if (!canUseLocalStorage()) {
+    return [];
+  }
+
+  try {
+    const rawValue = window.localStorage.getItem(NAMING_RESPONSES_STORAGE_KEY);
+    if (!rawValue) {
+      return [];
+    }
+
+    const parsed = JSON.parse(rawValue);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeStoredNamingResponses(responses: NamingResponse[]) {
+  if (!canUseLocalStorage()) {
+    return;
+  }
+
+  window.localStorage.setItem(
+    NAMING_RESPONSES_STORAGE_KEY,
+    JSON.stringify(responses),
+  );
+}
+
+function getAllNamingSessions() {
+  const storedSessions = readStoredNamingSessions();
+  const storedSessionIds = new Set(storedSessions.map((session) => session.sessionId));
+
+  return [
+    ...mockNamingSessions.filter((session) => !storedSessionIds.has(session.sessionId)),
+    ...storedSessions,
+  ];
+}
+
+function getAllNamingResponses() {
+  const storedResponses = readStoredNamingResponses();
+  const storedResponseIds = new Set(
+    storedResponses.map((response) => response.responseId),
+  );
+
+  return [
+    ...mockNamingResponses.filter(
+      (response) => !storedResponseIds.has(response.responseId),
+    ),
+    ...storedResponses,
+  ];
+}
+
+function upsertStoredNamingSession(session: NamingSessionState) {
+  const storedSessions = readStoredNamingSessions();
+  const existingIndex = storedSessions.findIndex(
+    (item) => item.sessionId === session.sessionId,
+  );
+
+  if (existingIndex === -1) {
+    writeStoredNamingSessions([...storedSessions, session]);
+    return;
+  }
+
+  const nextSessions = [...storedSessions];
+  nextSessions[existingIndex] = session;
+  writeStoredNamingSessions(nextSessions);
 }
 
 export async function getPn002NamingModule(): Promise<
@@ -97,6 +201,7 @@ export async function getNamingQuestionById(
 
 export async function createMockNamingSession(
   setId: NamingSet["id"],
+  patientId = "patient-001",
 ): Promise<TrainingServiceResult<NamingSessionState>> {
   await waitForMockApi();
 
@@ -108,6 +213,7 @@ export async function createMockNamingSession(
 
   const session: NamingSessionState = {
     sessionId: `pn002-session-${setId}-${Date.now()}`,
+    patientId,
     moduleId: "PN002",
     categoryId: "animals",
     setId,
@@ -117,7 +223,11 @@ export async function createMockNamingSession(
     responses: [],
   };
 
-  mockNamingSessions.push(session);
+  if (canUseLocalStorage()) {
+    upsertStoredNamingSession(session);
+  } else {
+    mockNamingSessions.push(session);
+  }
 
   return createSuccess(session);
 }
@@ -127,7 +237,9 @@ export async function getMockNamingSessionById(
 ): Promise<TrainingServiceResult<NamingSessionState>> {
   await waitForMockApi();
 
-  const session = mockNamingSessions.find((item) => item.sessionId === sessionId);
+  const session = getAllNamingSessions().find(
+    (item) => item.sessionId === sessionId,
+  );
 
   if (!session) {
     return createFailure("ไม่พบข้อมูล session");
@@ -144,18 +256,32 @@ export async function submitMockNamingAnswer(
   // TODO: replace mock data with backend API integration.
   const savedResponse: NamingResponse = {
     ...response,
-    responseId: `pn002-response-${mockNamingResponses.length + 1}`,
+    responseId: `pn002-response-${getAllNamingResponses().length + 1}`,
     submittedAt: new Date().toISOString(),
   };
 
-  mockNamingResponses.push(savedResponse);
+  if (canUseLocalStorage()) {
+    writeStoredNamingResponses([...readStoredNamingResponses(), savedResponse]);
+  } else {
+    mockNamingResponses.push(savedResponse);
+  }
 
-  const session = mockNamingSessions.find(
+  const session = getAllNamingSessions().find(
     (item) => item.sessionId === response.sessionId,
   );
 
   if (session) {
-    session.responses.push(savedResponse);
+    const hasExistingResponse = session.responses.some(
+      (item) => item.questionId === savedResponse.questionId,
+    );
+
+    if (!hasExistingResponse) {
+      session.responses.push(savedResponse);
+    }
+
+    if (canUseLocalStorage()) {
+      upsertStoredNamingSession(session);
+    }
   }
 
   return createSuccess(savedResponse);
@@ -166,14 +292,16 @@ export async function getMockNamingSessionSummary(
 ): Promise<TrainingServiceResult<NamingSessionSummary>> {
   await waitForMockApi();
 
-  const session = mockNamingSessions.find((item) => item.sessionId === sessionId);
+  const session = getAllNamingSessions().find(
+    (item) => item.sessionId === sessionId,
+  );
 
   if (!session) {
     return createFailure("ไม่พบข้อมูล session");
   }
 
   const set = mockPn002NamingSets.find((item) => item.id === session.setId);
-  const responses = mockNamingResponses.filter(
+  const responses = getAllNamingResponses().filter(
     (response) => response.sessionId === sessionId,
   );
   const wordsToReview =
@@ -199,4 +327,25 @@ export async function getMockNamingSessionSummary(
     wordsToReview,
     completedAt: new Date().toISOString(),
   });
+}
+
+export function getSavedNamingResponsesForPatient(patientId: string) {
+  const sessions = getAllNamingSessions().filter(
+    (session) => session.patientId === patientId,
+  );
+  const sessionIds = new Set(sessions.map((session) => session.sessionId));
+  const questions = mockPn002NamingSets.flatMap((set) => set.questions);
+
+  return getAllNamingResponses()
+    .filter((response) => sessionIds.has(response.sessionId))
+    .map((response) => {
+      const session = sessions.find((item) => item.sessionId === response.sessionId);
+      const question = questions.find((item) => item.id === response.questionId);
+
+      return {
+        response,
+        session,
+        question,
+      };
+    });
 }

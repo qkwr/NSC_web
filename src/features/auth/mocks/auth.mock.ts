@@ -7,19 +7,19 @@ export type MockAuthRecord = {
 
 export const mockAuthRecords: MockAuthRecord[] = [
   {
-    accessCode: "PN001",
+    accessCode: "P-482913",
     user: {
       id: "patient-001",
-      accessCode: "PN001",
+      accessCode: "P-482913",
       role: "patient",
       displayName: "Patient 001",
     },
   },
   {
-    accessCode: "PN002",
+    accessCode: "P-739204",
     user: {
       id: "patient-002",
-      accessCode: "PN002",
+      accessCode: "P-739204",
       role: "patient",
       displayName: "Patient 002",
     },

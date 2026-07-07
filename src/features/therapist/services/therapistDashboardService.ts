@@ -11,6 +11,11 @@ import type {
 
 const MOCK_API_DELAY_MS = 150;
 const LOCAL_PATIENTS_STORAGE_KEY = "nsc_therapist_patients";
+const PATIENT_CODE_PATTERN = /^P-\d{6}$/;
+const LEGACY_PATIENT_CODE_BY_ID: Record<string, string> = {
+  "patient-001": "P-482913",
+  "patient-002": "P-739204",
+};
 
 async function waitForMockApi() {
   await new Promise((resolve) => setTimeout(resolve, MOCK_API_DELAY_MS));
@@ -59,6 +64,59 @@ function getAllPatientsForCurrentRuntime() {
   ];
 }
 
+export function normalizePatientCode(patientCode: string) {
+  return patientCode.trim().toUpperCase();
+}
+
+export function validatePatientCodeFormat(patientCode: string) {
+  return PATIENT_CODE_PATTERN.test(normalizePatientCode(patientCode));
+}
+
+function getPatientCodeValue(patient: TherapistPatientDetail) {
+  const profileCode = patient.patientProfile?.patientCode || patient.code;
+  const normalizedCode = normalizePatientCode(profileCode);
+
+  if (validatePatientCodeFormat(normalizedCode)) {
+    return normalizedCode;
+  }
+
+  return LEGACY_PATIENT_CODE_BY_ID[patient.id] ?? normalizedCode;
+}
+
+export function isPatientCodeUnique(
+  patientCode: string,
+  ignoredPatientId?: string,
+) {
+  const normalizedCode = normalizePatientCode(patientCode);
+
+  if (!validatePatientCodeFormat(normalizedCode)) {
+    return false;
+  }
+
+  return getAllPatientsForCurrentRuntime()
+    .map(syncPatientFromProfile)
+    .every((patient) => {
+      if (ignoredPatientId && patient.id === ignoredPatientId) {
+        return true;
+      }
+
+      return getPatientCodeValue(patient) !== normalizedCode;
+    });
+}
+
+export function generatePatientCode() {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    const digits = String(Math.floor(Math.random() * 1_000_000)).padStart(6, "0");
+    const nextCode = `P-${digits}`;
+
+    if (isPatientCodeUnique(nextCode)) {
+      return nextCode;
+    }
+  }
+
+  return `P-${String(Date.now()).slice(-6)}`;
+}
+
 function upsertStoredPatient(patient: TherapistPatientDetail) {
   const storedPatients = readStoredPatients();
   const existingIndex = storedPatients.findIndex((item) => item.id === patient.id);
@@ -105,7 +163,10 @@ function syncPatientFromProfile(patient: TherapistPatientDetail): TherapistPatie
   };
 
   profile.id = patient.id;
-  profile.patientCode = profile.patientCode || patient.code;
+  profile.patientCode = getPatientCodeValue({
+    ...patient,
+    patientProfile: profile,
+  });
   profile.fullName = profile.fullName || patient.name;
   profile.age = profile.age || patient.age;
   profile.caregiverName = profile.caregiverName || patient.caregiverName;
@@ -160,14 +221,45 @@ export async function getTherapistPatientDetail(
   };
 }
 
+export async function getPatientByPatientCode(
+  patientCode: string,
+): Promise<TherapistServiceResult<TherapistPatientDetail>> {
+  await waitForMockApi();
+
+  const normalizedCode = normalizePatientCode(patientCode);
+  const patient = getAllPatientsForCurrentRuntime()
+    .map(syncPatientFromProfile)
+    .find((item) => getPatientCodeValue(item) === normalizedCode);
+
+  if (!patient) {
+    return {
+      success: false,
+      errorMessage: "ไม่พบข้อมูลผู้รับบริการจากรหัสนี้",
+    };
+  }
+
+  return {
+    success: true,
+    data: patient,
+  };
+}
+
 export async function createPatient(
   patient: TherapistPatientDetail,
 ): Promise<TherapistServiceResult<TherapistPatientDetail>> {
   await waitForMockApi();
 
+  const normalizedPatient = syncPatientFromProfile(patient);
+  if (!isPatientCodeUnique(normalizedPatient.patientProfile.patientCode)) {
+    return {
+      success: false,
+      errorMessage: "รหัสเข้าใช้งานผู้รับบริการนี้ถูกใช้แล้ว",
+    };
+  }
+
   const allPatients = getAllPatientsForCurrentRuntime();
   const newPatient: TherapistPatientDetail = syncPatientFromProfile({
-    ...patient,
+    ...normalizedPatient,
     id: `patient-${String(allPatients.length + 1).padStart(3, "0")}`,
     lastSessionAt: new Date().toISOString(),
     latestSessionAt: new Date().toISOString(),
@@ -238,6 +330,13 @@ export async function updatePatientProfile(
   patientProfile: PatientProfile,
 ): Promise<TherapistServiceResult<TherapistPatientDetail>> {
   await waitForMockApi();
+
+  if (!isPatientCodeUnique(patientProfile.patientCode, patientId)) {
+    return {
+      success: false,
+      errorMessage: "รหัสเข้าใช้งานผู้รับบริการนี้ถูกใช้แล้วหรือรูปแบบไม่ถูกต้อง",
+    };
+  }
 
   const index = mockTherapistPatients.findIndex((item) => item.id === patientId);
   if (index === -1) {

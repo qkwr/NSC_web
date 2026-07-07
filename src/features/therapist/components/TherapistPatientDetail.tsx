@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import type {
   PatientProfile,
   TherapistPatientDetail as TherapistPatientDetailData,
@@ -97,14 +98,20 @@ function WordChips({
 
   return (
     <div className="flex flex-wrap gap-3">
-      {words.map((word) => (
-        <span
-          key={word}
-          className={`rounded-full px-5 py-2 text-lg font-bold ring-1 ${className}`}
-        >
-          {word}
-        </span>
-      ))}
+      {words.length > 0 ? (
+        words.map((word) => (
+          <span
+            key={word}
+            className={`rounded-full px-5 py-2 text-lg font-bold ring-1 ${className}`}
+          >
+            {word}
+          </span>
+        ))
+      ) : (
+        <p className="rounded-full bg-[#F8FEFF] px-5 py-2 text-base font-semibold text-[#557276] ring-1 ring-[#D7EFF0]">
+          ยังไม่มีข้อมูล
+        </p>
+      )}
     </div>
   );
 }
@@ -112,10 +119,20 @@ function WordChips({
 export function TherapistPatientDetail({
   patient,
 }: TherapistPatientDetailProps) {
+  const [copyStatus, setCopyStatus] = useState("");
   const profile = getSafePatientProfile(patient);
   const childrenSummary = profile.hasChildren
     ? `มีลูก ${profile.childrenCount} คน`
     : "ไม่มีลูก";
+
+  async function handleCopyPatientCode() {
+    if (typeof navigator === "undefined" || !navigator.clipboard) {
+      return;
+    }
+
+    await navigator.clipboard.writeText(profile.patientCode);
+    setCopyStatus("คัดลอกรหัสแล้ว");
+  }
 
   return (
     <main className="min-h-dvh bg-[linear-gradient(180deg,#F6FEFF_0%,#EAF9FB_58%,#DFF3F5_100%)] px-5 py-6 text-[#123232] sm:px-8">
@@ -131,11 +148,36 @@ export function TherapistPatientDetail({
           <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
             <div>
               <p className="inline-flex min-h-[38px] items-center rounded-full bg-[#F2FBFB] px-5 text-base font-semibold text-[#12847D] ring-1 ring-[#CDEEEF]">
-                {profile.patientCode}
+                Patient Code {profile.patientCode}
               </p>
               <h1 className="mt-4 text-[2.45rem] font-bold leading-tight sm:text-[3.1rem]">
                 {profile.fullName}
               </h1>
+              <div className="mt-5 rounded-[24px] bg-[#F8FEFF] px-5 py-4 ring-1 ring-[#D7EFF0]">
+                <p className="text-sm font-bold text-[#12847D]">
+                  รหัสเข้าใช้งานผู้รับบริการ
+                </p>
+                <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <p className="rounded-full bg-white px-5 py-2 text-2xl font-bold text-[#123232] ring-1 ring-[#CDEEEF]">
+                    {profile.patientCode}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleCopyPatientCode}
+                    className="inline-flex min-h-[46px] items-center justify-center rounded-full bg-[#1FA89C] px-5 text-base font-bold text-white shadow-[0_10px_22px_rgba(31,168,156,0.18)] hover:bg-[#178F84]"
+                  >
+                    คัดลอกรหัส
+                  </button>
+                </div>
+                <p className="mt-2 text-sm font-medium text-[#557276]">
+                  ส่งรหัสนี้ให้ผู้รับบริการหรือผู้ดูแล เพื่อเข้าเริ่มฝึกจากหน้าแรก
+                </p>
+                {copyStatus ? (
+                  <p className="mt-2 text-sm font-bold text-[#12847D]">
+                    {copyStatus}
+                  </p>
+                ) : null}
+              </div>
               <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <ProfileItem label="อายุ" value={`${profile.age} ปี`} />
                 <ProfileItem label="จังหวัด" value={profile.province} />
@@ -169,10 +211,13 @@ export function TherapistPatientDetail({
           <article className="rounded-[34px] bg-white px-7 py-7 shadow-[0_18px_48px_rgba(17,103,99,0.1)] ring-1 ring-[#CDEEEF]">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <h2 className="text-2xl font-bold">แบบฝึกเรียกชื่อภาพ</h2>
+                <p className="text-sm font-bold uppercase tracking-[0.08em] text-[#12847D]">
+                  ประวัติการฝึก
+                </p>
+                <h2 className="mt-1 text-2xl font-bold">แบบฝึกเรียกชื่อภาพ</h2>
                 <p className="mt-2 text-lg font-semibold text-[#13756F]">
                   หมวด{patient.pn002Naming.categoryName} ·{" "}
-                  {patient.pn002Naming.latestSetTitle}
+                  {patient.pn002Naming.latestSetTitle || "ยังไม่มีชุดล่าสุด"}
                 </p>
               </div>
               <p className="rounded-full bg-[#EAF9F8] px-5 py-2 text-lg font-bold text-[#0F756F]">
@@ -193,6 +238,23 @@ export function TherapistPatientDetail({
               <div>
                 <h3 className="mb-3 text-xl font-bold">คำที่ควรฝึกซ้ำ</h3>
                 <WordChips tone="amber" words={patient.pn002Naming.wordsToReview} />
+              </div>
+            </div>
+
+            <div className="mt-6 rounded-[28px] bg-[#F2FBFB] px-6 py-6 ring-1 ring-[#BFEAE7]">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <h3 className="text-2xl font-bold">สรุปผลรายบุคคล</h3>
+                  <p className="mt-2 max-w-[720px] text-base font-semibold leading-7 text-[#557276]">
+                    เปิดดูกราฟพัฒนาการ ตรวจเสียงผู้รับบริการ และพิมพ์รายงานผลรายบุคคล
+                  </p>
+                </div>
+                <Link
+                  href={`/therapist/patients/${patient.id}/training-detail`}
+                  className="inline-flex min-h-[58px] items-center justify-center rounded-full bg-[#1FA89C] px-7 text-center text-lg font-bold text-white shadow-[0_12px_28px_rgba(31,168,156,0.24)] transition hover:bg-[#178F84] focus:outline-none focus:ring-4 focus:ring-[#1FA89C]/25"
+                >
+                  ดูสรุปผลและรายงาน
+                </Link>
               </div>
             </div>
           </article>

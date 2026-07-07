@@ -1,6 +1,7 @@
 import type { AuthUser } from "../types/auth.types";
 
 const AUTH_SESSION_STORAGE_KEY = "nsc-web-auth-session";
+const ACTIVE_PATIENT_STORAGE_KEY = "nsc-web-active-patient-id";
 
 export type AuthSession = {
   user: AuthUser;
@@ -27,6 +28,12 @@ export function saveAuthSession(user: AuthUser) {
     AUTH_SESSION_STORAGE_KEY,
     JSON.stringify(session),
   );
+
+  if (user.role === "patient") {
+    setActivePatient(user.id);
+  } else {
+    clearActivePatient();
+  }
 }
 
 export function getAuthSession(): AuthSession | null {
@@ -59,4 +66,29 @@ export function clearAuthSession() {
   }
 
   window.sessionStorage.removeItem(AUTH_SESSION_STORAGE_KEY);
+  clearActivePatient();
+}
+
+export function setActivePatient(patientId: string) {
+  if (!canUseSessionStorage()) {
+    return;
+  }
+
+  window.sessionStorage.setItem(ACTIVE_PATIENT_STORAGE_KEY, patientId);
+}
+
+export function getActivePatient() {
+  if (!canUseSessionStorage()) {
+    return null;
+  }
+
+  return window.sessionStorage.getItem(ACTIVE_PATIENT_STORAGE_KEY);
+}
+
+export function clearActivePatient() {
+  if (!canUseSessionStorage()) {
+    return;
+  }
+
+  window.sessionStorage.removeItem(ACTIVE_PATIENT_STORAGE_KEY);
 }

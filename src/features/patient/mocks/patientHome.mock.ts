@@ -1,10 +1,10 @@
 import type { PatientHomeData } from "../types/patientHome.types";
 
 export const mockPatientHomeByCode: Record<string, PatientHomeData> = {
-  PN001: {
+  "P-482913": {
     patient: {
       id: "patient-001",
-      code: "PN001",
+      code: "P-482913",
       name: "สมชาย",
     },
     nextAction: {
@@ -18,10 +18,10 @@ export const mockPatientHomeByCode: Record<string, PatientHomeData> = {
       targetPath: "/patient/assessment/start",
     },
   },
-  PN002: {
+  "P-739204": {
     patient: {
       id: "patient-002",
-      code: "PN002",
+      code: "P-739204",
       name: "ใจดี",
     },
     nextAction: {

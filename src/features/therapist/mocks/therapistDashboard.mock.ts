@@ -6,12 +6,12 @@ import type {
 export const mockTherapistPatients: TherapistPatientDetail[] = [
   {
     id: "patient-001",
-    code: "PN001",
+    code: "P-482913",
     name: "สมชาย ใจดี",
     age: 64,
     patientProfile: {
       id: "patient-001",
-      patientCode: "PN001",
+      patientCode: "P-482913",
       fullName: "สมชาย ใจดี",
       age: 64,
       gender: "ชาย",
@@ -53,12 +53,12 @@ export const mockTherapistPatients: TherapistPatientDetail[] = [
   },
   {
     id: "patient-002",
-    code: "PN002",
+    code: "P-739204",
     name: "สายใจ เมตตา",
     age: 58,
     patientProfile: {
       id: "patient-002",
-      patientCode: "PN002",
+      patientCode: "P-739204",
       fullName: "สายใจ เมตตา",
       age: 58,
       gender: "หญิง",

@@ -53,6 +53,7 @@ export type TrainingModule = {
 
 export type NamingSessionState = {
   sessionId: string;
+  patientId: string;
   moduleId: "PN002";
   categoryId: "animals";
   setId: NamingSet["id"];

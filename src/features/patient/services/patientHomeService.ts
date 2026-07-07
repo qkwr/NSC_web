@@ -1,15 +1,54 @@
-import { mockPatientHomeByCode } from "../mocks/patientHome.mock";
-import type { PatientHomeResult } from "../types/patientHome.types";
+import { getPatientByPatientCode } from "@/features/therapist/services/therapistDashboardService";
+import type { PatientHomeData, PatientHomeResult } from "../types/patientHome.types";
+
+function getDisplayFirstName(fullName: string) {
+  return fullName.trim().split(/\s+/)[0] || fullName;
+}
+
+function createPatientHomeData(patientCode: string, patient: {
+  id: string;
+  name: string;
+  pn001ProgressPercent: number;
+  pn002ProgressPercent: number;
+}): PatientHomeData {
+  const needsAssessment = patient.pn001ProgressPercent < 100;
+
+  return {
+    patient: {
+      id: patient.id,
+      code: patientCode,
+      name: getDisplayFirstName(patient.name),
+    },
+    nextAction: needsAssessment
+      ? {
+          type: "needs_standard_assessment",
+          eyebrow: "แบบทดสอบก่อนใช้งาน",
+          title: "ทำแบบทดสอบก่อนใช้งาน",
+          description:
+            "เริ่มต้นด้วยแบบทดสอบก่อนใช้งาน เพื่อให้ระบบวางแผนการฝึกที่เหมาะกับคุณ",
+          progressPercent: patient.pn001ProgressPercent,
+          buttonText: "เริ่มทำแบบทดสอบก่อนใช้งาน",
+          targetPath: "/patient/assessment/start",
+        }
+      : {
+          type: "has_daily_training_plan",
+          eyebrow: "แบบฝึกวันนี้",
+          title: "ฝึกเรียกชื่อภาพ",
+          description:
+            "ระบบเลือกแบบฝึกให้จากผลการประเมินที่ผ่านมา",
+          progressPercent: patient.pn002ProgressPercent,
+          buttonText: "เริ่มฝึกวันนี้",
+          targetPath: "/patient/training/today",
+        },
+  };
+}
 
 export async function getPatientHomeData(
-  accessCode: string,
+  patientCode: string,
 ): Promise<PatientHomeResult> {
-  await new Promise((resolve) => setTimeout(resolve, 250));
+  const result = await getPatientByPatientCode(patientCode);
 
-  const normalizedCode = accessCode.trim().toUpperCase();
-  const patientHomeData = mockPatientHomeByCode[normalizedCode];
-
-  if (!patientHomeData) {
+  if (!result.success) {
     return {
       success: false,
       errorMessage: "ไม่พบข้อมูลผู้รับบริการ",
@@ -18,6 +57,6 @@ export async function getPatientHomeData(
 
   return {
     success: true,
-    data: patientHomeData,
+    data: createPatientHomeData(patientCode.trim().toUpperCase(), result.data),
   };
 }

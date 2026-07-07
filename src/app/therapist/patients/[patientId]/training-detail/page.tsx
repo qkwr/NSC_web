@@ -38,16 +38,16 @@ export default async function TherapistPatientTrainingDetailPage({
   const patient = result.data;
 
   return (
-    <main className="min-h-dvh bg-[linear-gradient(180deg,#F6FEFF_0%,#EAF9FB_58%,#DFF3F5_100%)] px-5 py-6 text-[#123232] sm:px-8">
-      <div className="mx-auto w-full max-w-[1180px]">
+    <main className="print-report-page min-h-dvh bg-[linear-gradient(180deg,#F6FEFF_0%,#EAF9FB_58%,#DFF3F5_100%)] px-5 py-6 text-[#123232] sm:px-8">
+      <div className="print-report-container mx-auto w-full max-w-[1180px]">
         <Link
           href={`/therapist/patients/${patient.id}`}
-          className="inline-flex min-h-[50px] items-center justify-center rounded-full bg-white px-6 text-base font-bold text-[#13756F] shadow-[0_10px_24px_rgba(17,103,99,0.1)] ring-1 ring-[#CDEEEF] transition hover:bg-[#F7FFFF]"
+          className="no-print inline-flex min-h-[50px] items-center justify-center rounded-full bg-white px-6 text-base font-bold text-[#13756F] shadow-[0_10px_24px_rgba(17,103,99,0.1)] ring-1 ring-[#CDEEEF] transition hover:bg-[#F7FFFF]"
         >
           กลับหน้า overview
         </Link>
 
-        <section className="mt-5 rounded-[34px] bg-white px-7 py-7 shadow-[0_18px_48px_rgba(17,103,99,0.1)] ring-1 ring-[#CDEEEF]">
+        <section className="print-card mt-5 rounded-[34px] bg-white px-7 py-7 shadow-[0_18px_48px_rgba(17,103,99,0.1)] ring-1 ring-[#CDEEEF]">
           <p className="inline-flex min-h-[36px] items-center rounded-full bg-[#F2FBFB] px-4 text-sm font-bold text-[#12847D] ring-1 ring-[#CDEEEF]">
             {patient.code}
           </p>

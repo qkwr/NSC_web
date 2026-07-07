@@ -160,6 +160,9 @@ export function LoginForm() {
   const [accessCode, setAccessCode] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submitButtonLabel = accessCode.trim().toUpperCase().startsWith("P-")
+    ? "เข้าเริ่มฝึก"
+    : "เข้าใช้งาน";
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -232,10 +235,10 @@ export function LoginForm() {
             <div className="w-full max-w-[430px]">
               <div className="text-center">
                 <h2 className="text-[2.35rem] font-extrabold leading-tight tracking-normal text-[#118a82]">
-                  เข้าสู่ระบบ
+                  {submitButtonLabel}
                 </h2>
                 <p className="mt-3 text-[1.15rem] font-medium leading-7 text-[#4f5865]">
-                  กรุณาใส่รหัสเข้าใช้งานของคุณ
+                  กรอกรหัสเข้าใช้งานตามบทบาทของคุณ
                 </p>
               </div>
 
@@ -244,7 +247,7 @@ export function LoginForm() {
                   className="mb-3 block text-[1.08rem] font-bold leading-6 text-[#118a82]"
                   htmlFor={inputId}
                 >
-                  รหัสเข้าใช้งาน
+                  รหัสเข้าใช้งานผู้รับบริการ / Therapist Code
                 </label>
 
                 <div className="flex h-20 items-center gap-4 rounded-xl border border-[#c8d5dc] bg-white px-6 shadow-[0_8px_20px_rgba(39,92,98,0.06)] transition focus-within:border-[#118a82] focus-within:ring-4 focus-within:ring-[#118a82]/15">
@@ -257,7 +260,7 @@ export function LoginForm() {
                     inputMode="text"
                     autoCapitalize="characters"
                     autoComplete="off"
-                    placeholder="กรอกรหัสเข้าใช้งาน"
+                    placeholder="เช่น P-482913 หรือ TH001"
                     value={accessCode}
                     onChange={(event) => {
                       setAccessCode(event.target.value);
@@ -285,11 +288,11 @@ export function LoginForm() {
                     <InfoIcon />
                     <div>
                       <p className="text-[1.08rem] font-bold text-[#118a82]">
-                        รหัสตัวอย่าง
+                        ตัวอย่างรหัสเข้าใช้งาน
                       </p>
                       <ul className="mt-2 list-disc space-y-1 pl-6 text-[1.05rem] font-medium leading-7">
-                        <li>ผู้ป่วย: PN001, PN002</li>
-                        <li>นักแก้ไขการพูด: TH001</li>
+                        <li>ผู้รับบริการ: Patient Code เช่น P-482913</li>
+                        <li>นักแก้ไขการพูด: Therapist Code TH001</li>
                       </ul>
                     </div>
                   </div>

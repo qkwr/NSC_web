@@ -12,11 +12,11 @@ export default function ClinicalReportActions({ reportText }: { reportText: stri
   }
 
   function handleDownload() {
-    alert("ฟังก์ชันดาวน์โหลด PDF กำลังพัฒนาต่อ");
+    window.print();
   }
 
   return (
-    <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+    <div className="no-print mt-4 flex flex-col gap-3 sm:flex-row">
       <button
         type="button"
         onClick={handleCopy}
@@ -29,7 +29,7 @@ export default function ClinicalReportActions({ reportText }: { reportText: stri
         onClick={handleDownload}
         className="rounded-full border border-[#CDEEEF] bg-white px-5 py-3 text-[#13756F]"
       >
-        ดาวน์โหลด PDF
+        พิมพ์ / บันทึก PDF ทั้งหมด
       </button>
     </div>
   );

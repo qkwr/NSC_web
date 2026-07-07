@@ -23,8 +23,8 @@ export function ClinicalReportCard({
     window.setTimeout(() => setCopyStatus("คัดลอกรายงาน"), 2000);
   }
 
-  function downloadPdf() {
-    alert("ฟังก์ชันดาวน์โหลด PDF กำลังพัฒนาต่อ");
+  function printReport() {
+    window.print();
   }
 
   return (
@@ -46,12 +46,13 @@ export function ClinicalReportCard({
 
       <textarea
         aria-label="เนื้อหารายงานผลรายบุคคล"
-        className="mt-4 min-h-[260px] w-full rounded-[24px] border border-[#D7EFF0] bg-[#F8FEFF] p-4 text-sm font-medium leading-7 text-[#123232]"
+        className="print-report-textarea mt-4 min-h-[260px] w-full rounded-[24px] border border-[#D7EFF0] bg-[#F8FEFF] p-4 text-sm font-medium leading-7 text-[#123232]"
         value={text}
         onChange={(event) => setText(event.target.value)}
       />
+      <pre className="print-report-text mt-4">{text}</pre>
 
-      <div className="mt-3 flex flex-col gap-3">
+      <div className="no-print mt-3 flex flex-col gap-3">
         <button
           type="button"
           className="rounded-full bg-[#1FA89C] px-5 py-3 text-sm font-bold text-white shadow-[0_10px_24px_rgba(31,168,156,0.22)] hover:bg-[#178F84]"
@@ -62,9 +63,9 @@ export function ClinicalReportCard({
         <button
           type="button"
           className="rounded-full border border-[#CDEEEF] bg-white px-5 py-3 text-sm font-bold text-[#13756F] hover:bg-[#F7FFFF]"
-          onClick={downloadPdf}
+          onClick={printReport}
         >
-          ดาวน์โหลด PDF
+          พิมพ์ / บันทึก PDF ทั้งหมด
         </button>
       </div>
     </div>

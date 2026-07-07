@@ -3,6 +3,7 @@ import {
   mockProgressBySession,
   mockSessionResults,
 } from "../mocks/therapistClinical.mock";
+import { getSavedNamingResponsesForPatient } from "@/features/training/services/pn002NamingService";
 import type {
   CategoryScore,
   ProgressBySession,
@@ -30,7 +31,21 @@ export async function getPatientSessionResults(patientId: string): Promise<{
   data: SessionResultItem[];
 } | { success: false; errorMessage: string }> {
   await waitForMockApi();
-  void patientId;
 
-  return { success: true, data: mockSessionResults };
+  const savedTrainingResults: SessionResultItem[] =
+    getSavedNamingResponsesForPatient(patientId).map(({ response, question }) => ({
+      id: response.responseId,
+      date: response.submittedAt.slice(0, 10),
+      asrTranscript: response.mockAnswer ?? (response.skipped ? "ข้ามข้อนี้" : ""),
+      expectedAnswer: question?.answer,
+      aiCorrect: response.isCorrect,
+      therapistReviewStatus: response.skipped ? "needs-review" : "not-reviewed",
+      therapistNote: response.hintLevelUsed
+        ? `ใช้คำใบ้ระดับ ${response.hintLevelUsed}`
+        : "",
+    }));
+
+  const baseResults = patientId === "patient-001" ? mockSessionResults : [];
+
+  return { success: true, data: [...savedTrainingResults, ...baseResults] };
 }

@@ -11,6 +11,7 @@ import {
   getNamingSetById,
   submitMockNamingAnswer,
 } from "../services/pn002NamingService";
+import { getAuthSession } from "@/features/auth/services/authSession";
 import type {
   NamingHint,
   NamingQuestion,
@@ -192,6 +193,8 @@ export function NamingTrainingSessionClient({
   const [activeHint, setActiveHint] = useState<NamingHint>();
   const [showReplayFeedback, setShowReplayFeedback] = useState(false);
   const [questionStartedAt, setQuestionStartedAt] = useState(() => Date.now());
+  const [typedAnswer, setTypedAnswer] = useState("");
+  const [answerError, setAnswerError] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -239,7 +242,13 @@ export function NamingTrainingSessionClient({
           return;
         }
 
-        const sessionResult = await createMockNamingSession(setResult.data.id);
+        const authSession = getAuthSession();
+        const patientId =
+          authSession?.role === "patient" ? authSession.user.id : "patient-001";
+        const sessionResult = await createMockNamingSession(
+          setResult.data.id,
+          patientId,
+        );
 
         if (!isActive) return;
 
@@ -283,6 +292,8 @@ export function NamingTrainingSessionClient({
     setHintLevel(0);
     setActiveHint(undefined);
     setShowReplayFeedback(false);
+    setTypedAnswer("");
+    setAnswerError("");
     setQuestionStartedAt(Date.now());
   }
 
@@ -301,18 +312,34 @@ export function NamingTrainingSessionClient({
     setCurrentQuestionIndex((index) => index + 1);
   }
 
-  async function saveAnswer(answerType: "mock_audio" | "skipped") {
+  function normalizeAnswer(answer: string) {
+    return answer.trim().toLocaleLowerCase("th-TH");
+  }
+
+  async function saveAnswer(
+    answerType: "mock_audio" | "skipped",
+    submittedAnswer?: string,
+  ) {
     if (!session || !set || !currentQuestion || isSaving) return false;
 
     setIsSaving(true);
     const responseTimeMs = Math.max(0, Date.now() - questionStartedAt);
+    const mockAnswer =
+      submittedAnswer ??
+      (answerType === "mock_audio" ? currentQuestion.answer : undefined);
+    const normalizedMockAnswer = mockAnswer ? normalizeAnswer(mockAnswer) : "";
+    const isCorrect =
+      answerType === "mock_audio" &&
+      currentQuestion.acceptableAnswers.some(
+        (answer) => normalizeAnswer(answer) === normalizedMockAnswer,
+      );
     const result = await submitMockNamingAnswer({
       sessionId: session.sessionId,
       questionId: currentQuestion.id,
       setId: set.id,
       answerType,
-      mockAnswer: answerType === "mock_audio" ? currentQuestion.answer : undefined,
-      isCorrect: answerType === "mock_audio",
+      mockAnswer,
+      isCorrect,
       skipped: answerType === "skipped",
       hintLevelUsed: hintLevel,
       responseTimeMs,
@@ -350,7 +377,7 @@ export function NamingTrainingSessionClient({
     if (recordingState === "recording") {
       setRecordingState("processing");
       window.setTimeout(async () => {
-        const isSaved = await saveAnswer("mock_audio");
+        const isSaved = await saveAnswer("mock_audio", currentQuestion.answer);
         if (isSaved) setRecordingState("recorded");
       }, 600);
       return;
@@ -368,6 +395,19 @@ export function NamingTrainingSessionClient({
     const isSaved = await saveAnswer("skipped");
     if (isSaved) {
       await goToNextQuestion();
+    }
+  }
+
+  async function handleTypedAnswerSubmit() {
+    if (!typedAnswer.trim()) {
+      setAnswerError("กรุณากรอกคำตอบก่อนบันทึก");
+      return;
+    }
+
+    setAnswerError("");
+    const isSaved = await saveAnswer("mock_audio", typedAnswer);
+    if (isSaved) {
+      setRecordingState("recorded");
     }
   }
 
@@ -545,6 +585,38 @@ export function NamingTrainingSessionClient({
             >
               {getMicText(recordingState)}
             </button>
+
+            <div className="w-full max-w-[420px] rounded-[26px] bg-white/90 p-4 text-left shadow-[0_10px_24px_rgba(17,103,99,0.08)] ring-1 ring-[#CDEEEF]">
+              <label
+                htmlFor="typed-training-answer"
+                className="text-base font-bold text-[#13756F]"
+              >
+                กรอกคำตอบแทน
+              </label>
+              <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+                <input
+                  id="typed-training-answer"
+                  className="min-h-[52px] flex-1 rounded-full border border-[#D7EFF0] bg-[#F8FEFF] px-5 text-lg font-semibold text-[#123232] outline-none focus:border-[#1FA89C] focus:ring-4 focus:ring-[#1FA89C]/15"
+                  placeholder="พิมพ์ชื่อภาพ"
+                  value={typedAnswer}
+                  onChange={(event) => setTypedAnswer(event.target.value)}
+                  disabled={recordingState === "recorded" || isSaving}
+                />
+                <button
+                  type="button"
+                  className="inline-flex min-h-[52px] items-center justify-center rounded-full bg-[#1FA89C] px-6 text-base font-bold text-white shadow-[0_10px_24px_rgba(31,168,156,0.22)] hover:bg-[#178F84] disabled:cursor-not-allowed disabled:opacity-55"
+                  onClick={handleTypedAnswerSubmit}
+                  disabled={recordingState === "recorded" || isSaving}
+                >
+                  บันทึกคำตอบ
+                </button>
+              </div>
+              {answerError ? (
+                <p className="mt-2 text-sm font-semibold text-[#B42318]">
+                  {answerError}
+                </p>
+              ) : null}
+            </div>
 
             <div className="relative">
               {showReplayFeedback ? (

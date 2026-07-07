@@ -1,10 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { PatientProfile } from "../types/therapist.types";
 import { formatThaiBirthDate } from "../utils/dateFormat";
+import {
+  generatePatientCode,
+  isPatientCodeUnique,
+  normalizePatientCode,
+  validatePatientCodeFormat,
+} from "../services/therapistDashboardService";
 
 type PatientFormMode = "create" | "edit";
 
@@ -52,7 +58,7 @@ function normalizeProfile(profile: PatientProfile): PatientProfile {
 
   return {
     ...profile,
-    patientCode: profile.patientCode.trim(),
+    patientCode: normalizePatientCode(profile.patientCode),
     fullName: profile.fullName.trim(),
     gender: profile.gender || "ชาย",
     age: Number.isFinite(profile.age) ? profile.age : 0,
@@ -83,7 +89,11 @@ function validateProfile(profile: PatientProfile): PatientFormErrors {
   }
 
   if (!normalized.patientCode) {
-    errors.patientCode = "กรุณากรอกรหัสผู้รับบริการ";
+    errors.patientCode = "กรุณาสร้างหรือกรอกรหัสเข้าใช้งานผู้รับบริการ";
+  } else if (!validatePatientCodeFormat(normalized.patientCode)) {
+    errors.patientCode = "รหัสต้องอยู่ในรูปแบบ P-XXXXXX เช่น P-482913";
+  } else if (!isPatientCodeUnique(normalized.patientCode, normalized.id || undefined)) {
+    errors.patientCode = "รหัสเข้าใช้งานผู้รับบริการนี้ถูกใช้แล้ว";
   }
 
   if (normalized.age <= 0) {
@@ -160,11 +170,13 @@ export default function PatientForm({
   onSubmit,
   cancelHref,
 }: PatientFormProps) {
+  const patientCodeInputId = useId();
   const [profile, setProfile] = useState<PatientProfile>(() =>
     createEmptyPatientProfile(initialValues),
   );
   const [errors, setErrors] = useState<PatientFormErrors>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [codeStatus, setCodeStatus] = useState("");
 
   const title = mode === "create" ? "เพิ่มผู้รับบริการใหม่" : "แก้ไขข้อมูลผู้รับบริการ";
   const submitLabel = mode === "create" ? "บันทึกผู้รับบริการ" : "บันทึกการแก้ไข";
@@ -176,6 +188,46 @@ export default function PatientForm({
       ...current,
       ...patch,
     }));
+  }
+
+  function handleGeneratePatientCode() {
+    if (mode === "edit") {
+      const confirmed = window.confirm(
+        "การสร้างรหัสใหม่จะทำให้รหัสเดิมใช้เข้าไม่ได้หลังบันทึกการแก้ไข ต้องการดำเนินการต่อหรือไม่?",
+      );
+
+      if (!confirmed) {
+        return;
+      }
+    }
+
+    const nextCode = generatePatientCode();
+    updateProfile({ patientCode: nextCode });
+    setErrors((current) => {
+      const nextErrors = { ...current };
+      delete nextErrors.patientCode;
+      return nextErrors;
+    });
+    setCodeStatus(
+      mode === "create"
+        ? "สร้างรหัสเข้าใช้งานแล้ว"
+        : "สร้างรหัสใหม่แล้ว กรุณาบันทึกการแก้ไขเพื่อใช้งานรหัสนี้",
+    );
+  }
+
+  async function handleCopyPatientCode() {
+    const normalizedCode = normalizePatientCode(profile.patientCode);
+
+    if (
+      !normalizedCode ||
+      typeof navigator === "undefined" ||
+      !navigator.clipboard
+    ) {
+      return;
+    }
+
+    await navigator.clipboard.writeText(normalizedCode);
+    setCodeStatus("คัดลอกรหัสแล้ว");
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -194,10 +246,7 @@ export default function PatientForm({
     setIsSaving(false);
 
     if (!didSave) {
-      setErrors((current) => ({
-        ...current,
-        fullName: current.fullName,
-      }));
+      return;
     }
   }
 
@@ -217,17 +266,56 @@ export default function PatientForm({
               />
             </Field>
 
-            <Field label="รหัสผู้รับบริการ" error={errors.patientCode}>
-              <input
-                className={inputClass}
-                placeholder="เช่น PN001"
-                required
-                value={profile.patientCode}
-                onChange={(event) =>
-                  updateProfile({ patientCode: event.target.value })
-                }
-              />
-            </Field>
+            <div className="space-y-2">
+              <label className="font-semibold" htmlFor={patientCodeInputId}>
+                รหัสเข้าใช้งานผู้รับบริการ
+              </label>
+              <div className="grid gap-3 lg:grid-cols-[1fr_auto]">
+                <input
+                  id={patientCodeInputId}
+                  className={inputClass}
+                  placeholder="เช่น P-482913"
+                  required
+                  value={profile.patientCode}
+                  onChange={(event) => {
+                    updateProfile({
+                      patientCode: normalizePatientCode(event.target.value),
+                    });
+                    setCodeStatus("");
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={handleGeneratePatientCode}
+                  className="inline-flex min-h-[50px] items-center justify-center rounded-xl bg-[#EAF9F8] px-4 text-base font-bold text-[#0F756F] ring-1 ring-[#CDEEEF] hover:bg-[#DFF5F4]"
+                >
+                  {mode === "create" ? "สร้างรหัสเข้าใช้งาน" : "สร้างรหัสใหม่"}
+                </button>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-[#557276]">
+                <span>รูปแบบ Patient Code: P-XXXXXX</span>
+                {profile.patientCode ? (
+                  <button
+                    type="button"
+                    onClick={handleCopyPatientCode}
+                    className="rounded-full border border-[#CDEEEF] bg-white px-3 py-1 font-bold text-[#13756F] hover:bg-[#F7FFFF]"
+                  >
+                    คัดลอกรหัส
+                  </button>
+                ) : null}
+              </div>
+              <p className="text-sm font-medium text-[#557276]">
+                ส่งรหัสนี้ให้ผู้รับบริการหรือผู้ดูแล เพื่อใช้เข้าเริ่มฝึก
+              </p>
+              {codeStatus ? (
+                <p className="text-sm font-bold text-[#12847D]">{codeStatus}</p>
+              ) : null}
+              {errors.patientCode ? (
+                <span className="block text-sm font-semibold text-[#B42318]">
+                  {errors.patientCode}
+                </span>
+              ) : null}
+            </div>
 
             <Field label="อายุ" error={errors.age}>
               <input
