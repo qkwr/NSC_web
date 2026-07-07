@@ -10,9 +10,73 @@ import type {
 } from "../types/therapist.types";
 
 const MOCK_API_DELAY_MS = 150;
+const LOCAL_PATIENTS_STORAGE_KEY = "nsc_therapist_patients";
 
 async function waitForMockApi() {
   await new Promise((resolve) => setTimeout(resolve, MOCK_API_DELAY_MS));
+}
+
+function canUseLocalStorage() {
+  return typeof window !== "undefined" && Boolean(window.localStorage);
+}
+
+function readStoredPatients(): TherapistPatientDetail[] {
+  if (!canUseLocalStorage()) {
+    return [];
+  }
+
+  try {
+    const rawValue = window.localStorage.getItem(LOCAL_PATIENTS_STORAGE_KEY);
+    if (!rawValue) {
+      return [];
+    }
+
+    const parsed = JSON.parse(rawValue);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeStoredPatients(patients: TherapistPatientDetail[]) {
+  if (!canUseLocalStorage()) {
+    return;
+  }
+
+  window.localStorage.setItem(
+    LOCAL_PATIENTS_STORAGE_KEY,
+    JSON.stringify(patients),
+  );
+}
+
+function getAllPatientsForCurrentRuntime() {
+  const storedPatients = readStoredPatients();
+  const storedPatientIds = new Set(storedPatients.map((patient) => patient.id));
+
+  return [
+    ...mockTherapistPatients.filter((patient) => !storedPatientIds.has(patient.id)),
+    ...storedPatients,
+  ];
+}
+
+function upsertStoredPatient(patient: TherapistPatientDetail) {
+  const storedPatients = readStoredPatients();
+  const existingIndex = storedPatients.findIndex((item) => item.id === patient.id);
+
+  if (existingIndex === -1) {
+    writeStoredPatients([...storedPatients, patient]);
+    return;
+  }
+
+  const nextPatients = [...storedPatients];
+  nextPatients[existingIndex] = patient;
+  writeStoredPatients(nextPatients);
+}
+
+function removeStoredPatient(patientId: string) {
+  writeStoredPatients(
+    readStoredPatients().filter((patient) => patient.id !== patientId),
+  );
 }
 
 function syncPatientFromProfile(patient: TherapistPatientDetail): TherapistPatientDetail {
@@ -60,15 +124,16 @@ export async function getTherapistDashboardData(): Promise<
   TherapistServiceResult<TherapistDashboardData>
 > {
   await waitForMockApi();
+  const patients = getAllPatientsForCurrentRuntime();
 
   // Rebuild counts from live mock state so that mutations stay in sync.
   return {
     success: true,
     data: {
       ...mockTherapistDashboard,
-      totalPatients: mockTherapistPatients.length,
-      followUpCount: mockTherapistPatients.filter((patient) => patient.needsFollowUp).length,
-      patients: mockTherapistPatients.map(syncPatientFromProfile),
+      totalPatients: patients.length,
+      followUpCount: patients.filter((patient) => patient.needsFollowUp).length,
+      patients: patients.map(syncPatientFromProfile),
     },
   };
 }
@@ -78,7 +143,9 @@ export async function getTherapistPatientDetail(
 ): Promise<TherapistServiceResult<TherapistPatientDetail>> {
   await waitForMockApi();
 
-  const patient = mockTherapistPatients.find((item) => item.id === patientId);
+  const patient = getAllPatientsForCurrentRuntime().find(
+    (item) => item.id === patientId,
+  );
 
   if (!patient) {
     return {
@@ -98,14 +165,19 @@ export async function createPatient(
 ): Promise<TherapistServiceResult<TherapistPatientDetail>> {
   await waitForMockApi();
 
+  const allPatients = getAllPatientsForCurrentRuntime();
   const newPatient: TherapistPatientDetail = syncPatientFromProfile({
     ...patient,
-    id: `patient-${String(mockTherapistPatients.length + 1).padStart(3, "0")}`,
+    id: `patient-${String(allPatients.length + 1).padStart(3, "0")}`,
     lastSessionAt: new Date().toISOString(),
     latestSessionAt: new Date().toISOString(),
   });
 
-  mockTherapistPatients.push(newPatient);
+  if (canUseLocalStorage()) {
+    upsertStoredPatient(newPatient);
+  } else {
+    mockTherapistPatients.push(newPatient);
+  }
 
   return {
     success: true,
@@ -121,9 +193,27 @@ export async function updatePatient(
 
   const index = mockTherapistPatients.findIndex((item) => item.id === patientId);
   if (index === -1) {
+    const storedPatient = readStoredPatients().find(
+      (item) => item.id === patientId,
+    );
+
+    if (!storedPatient) {
+      return {
+        success: false,
+        errorMessage: "ไม่พบข้อมูลผู้รับบริการ",
+      };
+    }
+
+    const updatedStoredPatient = syncPatientFromProfile({
+      ...storedPatient,
+      ...updates,
+      id: patientId,
+    });
+    upsertStoredPatient(updatedStoredPatient);
+
     return {
-      success: false,
-      errorMessage: "ไม่พบข้อมูลผู้รับบริการ",
+      success: true,
+      data: updatedStoredPatient,
     };
   }
 
@@ -132,6 +222,10 @@ export async function updatePatient(
     ...updates,
     id: patientId,
   });
+
+  if (canUseLocalStorage()) {
+    upsertStoredPatient(mockTherapistPatients[index]);
+  }
 
   return {
     success: true,
@@ -147,9 +241,29 @@ export async function updatePatientProfile(
 
   const index = mockTherapistPatients.findIndex((item) => item.id === patientId);
   if (index === -1) {
+    const storedPatient = readStoredPatients().find(
+      (item) => item.id === patientId,
+    );
+
+    if (!storedPatient) {
+      return {
+        success: false,
+        errorMessage: "ไม่พบข้อมูลผู้รับบริการ",
+      };
+    }
+
+    const updatedStoredPatient = syncPatientFromProfile({
+      ...storedPatient,
+      patientProfile: {
+        ...patientProfile,
+        id: patientId,
+      },
+    });
+    upsertStoredPatient(updatedStoredPatient);
+
     return {
-      success: false,
-      errorMessage: "ไม่พบข้อมูลผู้รับบริการ",
+      success: true,
+      data: updatedStoredPatient,
     };
   }
 
@@ -160,6 +274,10 @@ export async function updatePatientProfile(
       id: patientId,
     },
   });
+
+  if (canUseLocalStorage()) {
+    upsertStoredPatient(mockTherapistPatients[index]);
+  }
 
   return {
     success: true,
@@ -174,13 +292,27 @@ export async function deletePatient(
 
   const index = mockTherapistPatients.findIndex((item) => item.id === patientId);
   if (index === -1) {
+    const storedPatient = readStoredPatients().find(
+      (item) => item.id === patientId,
+    );
+
+    if (!storedPatient) {
+      return {
+        success: false,
+        errorMessage: "ไม่พบข้อมูลผู้รับบริการ",
+      };
+    }
+
+    removeStoredPatient(patientId);
+
     return {
-      success: false,
-      errorMessage: "ไม่พบข้อมูลผู้รับบริการ",
+      success: true,
+      data: null,
     };
   }
 
   mockTherapistPatients.splice(index, 1);
+  removeStoredPatient(patientId);
 
   return {
     success: true,

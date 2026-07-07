@@ -2,8 +2,12 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import type { TherapistPatientSummary } from "../types/therapist.types";
-import { deletePatient } from "../services/therapistDashboardService";
+import {
+  deletePatient,
+  getTherapistDashboardData,
+} from "../services/therapistDashboardService";
 
 type TherapistPatientListProps = {
   patients: TherapistPatientSummary[];
@@ -11,6 +15,26 @@ type TherapistPatientListProps = {
 
 export default function TherapistPatientList({ patients }: TherapistPatientListProps) {
   const router = useRouter();
+  const [visiblePatients, setVisiblePatients] = useState(patients);
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function loadPatients() {
+      const result = await getTherapistDashboardData();
+      if (!isActive || !result.success) {
+        return;
+      }
+
+      setVisiblePatients(result.data.patients);
+    }
+
+    loadPatients();
+
+    return () => {
+      isActive = false;
+    };
+  }, [patients]);
 
   async function handleDelete(patientId: string) {
     const confirmed = window.confirm("คุณแน่ใจว่าต้องการลบผู้รับบริการรายนี้? การกระทำนี้ไม่สามารถย้อนกลับได้");
@@ -18,6 +42,9 @@ export default function TherapistPatientList({ patients }: TherapistPatientListP
 
     const result = await deletePatient(patientId);
     if (result.success) {
+      setVisiblePatients((current) =>
+        current.filter((patient) => patient.id !== patientId),
+      );
       router.refresh();
       alert("ลบผู้รับบริการเรียบร้อยแล้ว");
     } else {
@@ -27,7 +54,7 @@ export default function TherapistPatientList({ patients }: TherapistPatientListP
 
   return (
     <div className="grid gap-4">
-      {patients.map((patient) => (
+      {visiblePatients.map((patient) => (
         <div
           key={patient.id}
           className="rounded-[30px] bg-white px-6 py-5 shadow-[0_16px_36px_rgba(17,103,99,0.09)] ring-1 ring-[#CDEEEF]"
