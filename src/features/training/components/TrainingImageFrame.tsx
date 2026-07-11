@@ -18,7 +18,7 @@ export function TrainingImageFrame({
   const isLarge = size === "large";
 
   const frameClassName = isLarge
-    ? "h-[clamp(220px,38vh,320px)] w-[clamp(220px,38vh,320px)] rounded-[34px] p-2"
+    ? "h-[clamp(180px,30vh,270px)] w-[clamp(180px,30vh,270px)] rounded-[28px] p-2"
     : "h-[clamp(112px,20vh,164px)] w-[clamp(112px,20vh,164px)] rounded-[24px] p-2";
 
   return (

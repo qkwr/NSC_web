@@ -86,12 +86,12 @@ export default function TrainingTodayPage() {
   }
 
   return (
-    <main className="min-h-dvh bg-[linear-gradient(180deg,#F6FEFF_0%,#EAF9FB_58%,#DFF3F5_100%)] px-5 py-6 text-[#123232] sm:px-8 sm:py-7">
-      <div className="mx-auto flex min-h-[calc(100dvh-3rem)] w-full max-w-[1040px] flex-col">
-        <div className="mb-6 flex items-center justify-between">
+    <main className="flex h-dvh overflow-hidden bg-[linear-gradient(180deg,#F6FEFF_0%,#EAF9FB_58%,#DFF3F5_100%)] px-5 py-5 text-[#123232] sm:px-8 sm:py-6">
+      <div className="mx-auto flex h-full w-full max-w-[1040px] flex-col justify-center">
+        <div className="mb-5 flex items-center justify-between">
           <div>
             <p className="text-base font-semibold text-[#12847D]">แบบฝึกวันนี้</p>
-            <h1 className="mt-3 text-[2.4rem] font-bold leading-tight text-[#123232]">
+            <h1 className="mt-2 text-[2.2rem] font-bold leading-tight text-[#123232]">
               ฝึกเรียกชื่อภาพ
             </h1>
           </div>
@@ -104,23 +104,23 @@ export default function TrainingTodayPage() {
           </button>
         </div>
 
-        <article className="rounded-[34px] border border-[#C8E9EA] bg-white px-7 py-8 shadow-[0_22px_55px_rgba(24,112,108,0.1)] sm:px-10 sm:py-10">
+        <article className="rounded-[30px] border border-[#C8E9EA] bg-white px-7 py-7 shadow-[0_22px_55px_rgba(24,112,108,0.1)] sm:px-9 sm:py-8">
           <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
             <div>
               <p className="text-base font-bold text-[#1FA89C]">{plan.moduleName}</p>
               <h2 className="mt-3 text-[2rem] font-bold leading-tight text-[#123232]">
                 {plan.moduleName} หมวด{plan.categoryName}
               </h2>
-              <p className="mt-5 text-xl font-medium leading-9 text-[#4E6D70]">
+              <p className="mt-4 text-lg font-medium leading-8 text-[#4E6D70]">
                 ระบบเลือกแบบฝึกให้จากผลการประเมินที่ผ่านมา
               </p>
             </div>
 
-            <div className="rounded-[28px] bg-[#F6FEFF] p-6 text-[#123232] shadow-[0_12px_30px_rgba(17,103,99,0.08)]">
+            <div className="rounded-[24px] bg-[#F6FEFF] p-5 text-[#123232] shadow-[0_12px_30px_rgba(17,103,99,0.08)]">
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#12847D]">
                 รายละเอียดแบบฝึก
               </p>
-              <div className="mt-6 space-y-4 text-lg font-medium">
+              <div className="mt-5 space-y-3 text-lg font-medium">
                 <p>
                   <span className="font-bold text-[#123232]">หมวด:</span> {plan.categoryName}
                 </p>
@@ -134,16 +134,16 @@ export default function TrainingTodayPage() {
             </div>
           </div>
 
-          <div className="mt-10 text-lg leading-8 text-[#4E6D70]">
+          <div className="mt-7 text-lg leading-8 text-[#4E6D70]">
             <p>แบบฝึกนี้ถูกจัดให้โดยอัตโนมัติตามผลการประเมิน PN001 / Standard Assessment ที่คุณเคยทำไว้</p>
           </div>
 
-          <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mt-7 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <button
               type="button"
               disabled={isStarting}
               onClick={handleStartTraining}
-              className="inline-flex min-h-[72px] w-full items-center justify-center rounded-[24px] bg-[#1FA89C] px-7 py-5 text-center text-2xl font-bold text-white shadow-[0_16px_34px_rgba(31,168,156,0.24)] transition hover:bg-[#178F84] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+              className="inline-flex min-h-[64px] w-full items-center justify-center rounded-[22px] bg-[#1FA89C] px-7 py-4 text-center text-xl font-bold text-white shadow-[0_16px_34px_rgba(31,168,156,0.24)] transition hover:bg-[#178F84] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
             >
               {isStarting ? "กำลังเริ่มแบบฝึก..." : "เริ่มแบบฝึก"}
             </button>

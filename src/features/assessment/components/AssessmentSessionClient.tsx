@@ -2,10 +2,22 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { type ReactNode, type SVGProps, useEffect, useState } from "react";
+import {
+  type ReactNode,
+  type SVGProps,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useRouter } from "next/navigation";
 import { FeedbackBubble } from "@/components/ui/FeedbackBubble";
 import { FeedbackOverlay } from "@/components/ui/FeedbackOverlay";
+import {
+  getVoiceRecordingStatusText,
+  useAutoVoiceRecorder,
+  type RecordingDebugSnapshot,
+  type VoiceRecordingState,
+} from "@/features/speech/hooks/useAutoVoiceRecorder";
 import {
   getStandardAssessmentSession,
   saveStandardAssessmentAnswer,
@@ -18,8 +30,11 @@ import type {
   StandardAssessmentSession,
 } from "../types/assessment.types";
 
-type MockRecordingUiState = "idle" | "recording" | "processing";
 type ChoiceFeedbackState = "correct" | "wrong" | null;
+type QuestionProgressState = {
+  answeredQuestionIndexes: number[];
+  skippedQuestionIndexes: number[];
+};
 
 function isVoiceInteraction(interactionType: QuestionInteractionType) {
   return (
@@ -46,6 +61,13 @@ function getMockAnswerForQuestion(question: StandardAssessmentQuestion) {
   }
 
   return `mock ${question.interactionType} answer`;
+}
+
+function getMockOutcomeForQuestion(question: StandardAssessmentQuestion) {
+  if (question.order % 5 === 0) return "wrong";
+  if (question.order % 2 === 0) return "almost";
+
+  return "correct";
 }
 
 function getDisplayPrompt(promptText: string) {
@@ -122,37 +144,6 @@ function getRepeatPromptSizeClass(promptText: string) {
   }
 
   return "text-[clamp(4rem,5vw,4.5rem)] leading-[1.12]";
-}
-
-function getVoiceButtonText(recordingState: MockRecordingUiState) {
-  if (recordingState === "recording") {
-    return "กดอีกครั้งเพื่อหยุด";
-  }
-
-  if (recordingState === "processing") {
-    return "กำลังตรวจคำตอบ";
-  }
-
-  return "กดเพื่อพูดตอบ";
-}
-
-function getVoiceStatusText(
-  recordingState: MockRecordingUiState,
-  hasMockRecording: boolean,
-) {
-  if (recordingState === "recording") {
-    return "กำลังฟังเสียงของคุณ";
-  }
-
-  if (recordingState === "processing") {
-    return "กำลังบันทึกคำตอบ";
-  }
-
-  if (hasMockRecording) {
-    return "บันทึกเสียงแล้ว";
-  }
-
-  return "พร้อมพูดตอบ";
 }
 
 type AssessmentImageProps = {
@@ -436,22 +427,33 @@ function QuestionCard({ question, promptText }: QuestionCardProps) {
 }
 
 type VoiceControlsProps = {
-  recordingState: MockRecordingUiState;
-  hasMockRecording: boolean;
+  audioLevel: number;
+  debugSnapshot: RecordingDebugSnapshot;
+  errorMessage: string;
+  recordingState: VoiceRecordingState;
   showReplayFeedback: boolean;
-  onMicrophoneToggle: () => void;
   onReplayPrompt: () => void;
+  onRetryRecording: () => void;
+  onStopAnswer: () => void;
 };
 
 function VoiceControls({
+  audioLevel,
+  debugSnapshot,
+  errorMessage,
   recordingState,
-  hasMockRecording,
   showReplayFeedback,
-  onMicrophoneToggle,
   onReplayPrompt,
+  onRetryRecording,
+  onStopAnswer,
 }: VoiceControlsProps) {
-  const micButtonText = getVoiceButtonText(recordingState);
-  const micStatusText = getVoiceStatusText(recordingState, hasMockRecording);
+  const micStatusText = getVoiceRecordingStatusText(recordingState);
+  const showStopFallback =
+    recordingState === "listening" || recordingState === "speaking";
+  const showRetryFallback =
+    recordingState === "no-speech" ||
+    recordingState === "error" ||
+    recordingState === "completed";
 
   return (
     <section className="grid h-full min-h-[360px] w-full max-w-[680px] grid-cols-[minmax(0,1fr)_124px] items-center gap-6">
@@ -480,40 +482,89 @@ function VoiceControls({
 
           <button
             type="button"
-            onClick={onMicrophoneToggle}
-            aria-label="ไมโครโฟนสำหรับพูดตอบ"
-            className="relative flex h-[clamp(154px,20vh,190px)] w-[clamp(154px,20vh,190px)] items-center justify-center rounded-full outline-none transition hover:scale-[1.02] focus:ring-4 focus:ring-[#1FA89C]/25 active:scale-[0.98]"
+            onClick={showStopFallback ? onStopAnswer : onRetryRecording}
+            disabled={!showStopFallback && !showRetryFallback}
+            aria-label={micStatusText}
+            className="relative flex h-[clamp(154px,20vh,190px)] w-[clamp(154px,20vh,190px)] items-center justify-center rounded-full outline-none transition focus:ring-4 focus:ring-[#1FA89C]/25"
           >
             <span
               aria-hidden="true"
               className={`absolute inset-[-30px] rounded-full border-2 border-[#BFEAE7] ${
-                recordingState === "recording" ? "animate-pulse" : ""
+                recordingState === "listening" || recordingState === "speaking"
+                  ? "animate-pulse"
+                  : ""
               }`}
             />
             <span
               aria-hidden="true"
               className={`absolute inset-[-16px] rounded-full border-2 border-[#CDEEEF] ${
-                recordingState === "recording" ? "animate-pulse" : ""
+                recordingState === "speaking" ? "animate-pulse" : ""
               }`}
             />
-            <span className="relative flex h-full w-full items-center justify-center rounded-full bg-[linear-gradient(180deg,#41C9BE_0%,#13958C_100%)] text-white shadow-[0_18px_42px_rgba(20,149,141,0.28)]">
+            <span
+              className="relative flex h-full w-full items-center justify-center rounded-full bg-[linear-gradient(180deg,#41C9BE_0%,#13958C_100%)] text-white shadow-[0_18px_42px_rgba(20,149,141,0.28)] transition-transform"
+              style={{
+                transform:
+                  recordingState === "speaking"
+                    ? `scale(${1 + Math.min(audioLevel * 1.6, 0.09)})`
+                    : undefined,
+              }}
+            >
               <MicrophoneIcon className="h-[54%] w-[54%]" />
             </span>
           </button>
         </div>
 
-        <button
-          type="button"
-          onClick={onMicrophoneToggle}
-          disabled={recordingState === "processing"}
-          className={`inline-flex min-h-[58px] min-w-[270px] items-center justify-center rounded-full px-8 text-xl font-bold shadow-[0_10px_28px_rgba(17,103,99,0.12)] ring-1 transition focus:outline-none focus:ring-4 focus:ring-[#1FA89C]/20 active:scale-[0.98] disabled:cursor-not-allowed ${
-            recordingState === "recording"
-              ? "bg-[#FFF3F1] text-[#D92D20] ring-[#F8C9C4]"
-              : "bg-white text-[#0F756F] ring-[#CDEEEF] hover:bg-[#F7FFFF]"
-          }`}
-        >
-          {micButtonText}
-        </button>
+        <div className="flex min-h-[96px] flex-col items-center justify-center gap-2">
+          <p
+            className={`inline-flex min-h-[58px] min-w-[290px] items-center justify-center rounded-full px-8 text-xl font-bold shadow-[0_10px_28px_rgba(17,103,99,0.12)] ring-1 ${
+              recordingState === "no-speech" || recordingState === "error"
+                ? "bg-[#FFF8E6] text-[#9A6A13] ring-[#F3E2B6]"
+                : "bg-white text-[#0F756F] ring-[#CDEEEF]"
+            }`}
+          >
+            {micStatusText}
+          </p>
+
+          {errorMessage ? (
+            <p className="max-w-[380px] text-sm font-semibold text-[#B42318]">
+              {errorMessage}
+            </p>
+          ) : null}
+
+          {process.env.NODE_ENV === "development" ? (
+            <p className="max-w-[430px] text-[11px] font-semibold text-[#557276]">
+              DEV mic rms {debugSnapshot.rmsLevel.toFixed(3)} / threshold{" "}
+              {debugSnapshot.speechThreshold.toFixed(3)}
+              {" | "}chunks {debugSnapshot.chunkCount}
+              {" | "}blob {debugSnapshot.sizeBytes} B
+              {" | "}duration {debugSnapshot.durationMs} ms
+              {debugSnapshot.stopReason ? ` | ${debugSnapshot.stopReason}` : ""}
+            </p>
+          ) : null}
+        </div>
+
+        <div className="flex min-h-[42px] flex-wrap justify-center gap-3">
+          {showStopFallback ? (
+            <button
+              className="inline-flex min-h-[40px] items-center justify-center rounded-full bg-white px-5 text-sm font-bold text-[#B42318] shadow-sm ring-1 ring-[#F8C9C4] transition hover:bg-[#FFF3F1] focus:outline-none focus:ring-4 focus:ring-[#D92D20]/15 active:scale-[0.98]"
+              onClick={onStopAnswer}
+              type="button"
+            >
+              หยุดตอบ
+            </button>
+          ) : null}
+
+          {showRetryFallback ? (
+            <button
+              className="inline-flex min-h-[40px] items-center justify-center rounded-full bg-white px-5 text-sm font-bold text-[#13756F] shadow-sm ring-1 ring-[#CDEEEF] transition hover:bg-[#F7FFFF] focus:outline-none focus:ring-4 focus:ring-[#1FA89C]/20 active:scale-[0.98]"
+              onClick={onRetryRecording}
+              type="button"
+            >
+              ลองบันทึกใหม่
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <div className="relative flex flex-col items-center justify-start self-start pt-[clamp(3.4rem,8vh,4.8rem)]">
@@ -710,15 +761,30 @@ function YesNoControls({
 
 type BottomControlsProps = {
   isSkipping: boolean;
+  skippedCount: number;
   onSkip: () => void;
+  onReviewSkipped: () => void;
 };
 
 function BottomControls({
   isSkipping,
+  skippedCount,
   onSkip,
+  onReviewSkipped,
 }: BottomControlsProps) {
   return (
-    <div className="relative z-20 grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-6 px-9 pb-8 pt-3">
+    <div className="relative z-20 grid shrink-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-6 px-9 pb-8 pt-3">
+      <div className="flex justify-start">
+        {skippedCount > 0 ? (
+          <button
+            className="inline-flex min-h-[58px] items-center justify-center rounded-full bg-white px-7 text-lg font-bold text-[#13756F] shadow-[0_10px_24px_rgba(17,103,99,0.11)] ring-1 ring-[#CDEEEF] transition hover:bg-[#F7FFFF] focus:outline-none focus:ring-4 focus:ring-[#1FA89C]/20 active:scale-[0.98]"
+            type="button"
+            onClick={onReviewSkipped}
+          >
+            กลับไปข้อที่ข้าม ({skippedCount})
+          </button>
+        ) : null}
+      </div>
       <div />
       <div className="flex justify-end">
         <button
@@ -742,9 +808,6 @@ export function AssessmentSessionClient() {
   );
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedOptionId, setSelectedOptionId] = useState("");
-  const [recordingState, setRecordingState] =
-    useState<MockRecordingUiState>("idle");
-  const [hasMockRecording, setHasMockRecording] = useState(false);
   const [showReplayFeedback, setShowReplayFeedback] = useState(false);
   const [feedbackVisible, setFeedbackVisible] = useState(false);
   const [feedbackType, setFeedbackType] = useState<
@@ -760,9 +823,17 @@ export function AssessmentSessionClient() {
     undefined,
   );
   const [isSkipping, setIsSkipping] = useState(false);
+  const [skippedQuestionIndexes, setSkippedQuestionIndexes] = useState<
+    number[]
+  >([]);
+  const [answeredQuestionIndexes, setAnsweredQuestionIndexes] = useState<
+    number[]
+  >([]);
   const [errorMessage, setErrorMessage] = useState("");
+  const [voiceErrorMessage, setVoiceErrorMessage] = useState("");
   const [questionStartedAt, setQuestionStartedAt] = useState(() => Date.now());
   const [isLoading, setIsLoading] = useState(true);
+  const lastAutoPromptQuestionIdRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     let isActive = true;
@@ -792,10 +863,92 @@ export function AssessmentSessionClient() {
     };
   }, []);
 
+  const currentQuestion = session?.questions[currentQuestionIndex];
+  const promptText = currentQuestion
+    ? getDisplayPrompt(currentQuestion.promptText)
+    : "";
+  const isVoiceQuestion = currentQuestion
+    ? isVoiceInteraction(currentQuestion.interactionType)
+    : false;
+  const isImageChoiceQuestion = currentQuestion
+    ? isImageChoiceInteraction(currentQuestion.interactionType)
+    : false;
+  const isYesNoQuestion = currentQuestion
+    ? isYesNoInteraction(currentQuestion.interactionType)
+    : false;
+  const {
+    audioLevel: voiceAudioLevel,
+    debugSnapshot: voiceDebugSnapshot,
+    errorMessage: autoRecorderErrorMessage,
+    resetQuestion: resetAutoRecorderQuestion,
+    retryCurrentQuestion,
+    startPromptFlow,
+    state: recordingState,
+    stopAnswer,
+  } = useAutoVoiceRecorder({
+    promptText,
+    onRecordingComplete: async (recordingResult) => {
+      if (!currentQuestion) return;
+      if (recordingResult.sizeBytes <= 0) return;
+
+      const mockAnswer = getMockAnswerForQuestion(currentQuestion);
+      const outcome = getMockOutcomeForQuestion(currentQuestion);
+
+      setFeedbackMockAnswer(mockAnswer ?? "");
+      setFeedbackExpected(currentQuestion.expectedAnswer ?? undefined);
+      setFeedbackType(outcome as "correct" | "almost" | "wrong");
+      setFeedbackVisible(true);
+
+      // The recorder now provides a real Blob boundary. This repo has no ASR
+      // service yet, so the existing mock assessment flow still drives scoring.
+      const isSaved = await saveCurrentAnswer({
+        questionId: currentQuestion.id,
+        answerType: isImageChoiceInteraction(currentQuestion.interactionType)
+          ? "image_choice"
+          : "mock_audio",
+        mockRecordingState: "recorded",
+        mockAnswer,
+        isCorrect: outcome === "correct",
+        ...getAnswerMetadata(),
+      });
+
+      if (!isSaved) {
+        throw new Error("Save assessment voice answer failed");
+      }
+
+      const nextQuestionProgress = markCurrentQuestionAnswered();
+      const delay = outcome === "correct" ? 5000 : 3000;
+
+      window.setTimeout(() => {
+        setFeedbackVisible(false);
+        goToNextQuestionOrResult(nextQuestionProgress);
+      }, delay);
+    },
+    onError: setVoiceErrorMessage,
+  });
+
+  useEffect(() => {
+    if (!session || !currentQuestion || !isVoiceQuestion) {
+      return;
+    }
+
+    if (lastAutoPromptQuestionIdRef.current === currentQuestion.id) {
+      return;
+    }
+
+    lastAutoPromptQuestionIdRef.current = currentQuestion.id;
+    void startPromptFlow(promptText);
+  }, [
+    currentQuestion,
+    isVoiceQuestion,
+    promptText,
+    session,
+    startPromptFlow,
+  ]);
+
   function resetQuestionUiState() {
     setSelectedOptionId("");
-    setRecordingState("idle");
-    setHasMockRecording(false);
+    resetAutoRecorderQuestion();
     setShowReplayFeedback(false);
     setImageChoiceFeedbackState(null);
     setImageChoiceFeedbackVisible(false);
@@ -803,23 +956,127 @@ export function AssessmentSessionClient() {
     setFeedbackExpected(undefined);
     setFeedbackMockAnswer(undefined);
     setErrorMessage("");
+    setVoiceErrorMessage("");
   }
 
-  function goToNextQuestionOrResult() {
+  function moveToQuestion(questionIndex: number) {
+    resetQuestionUiState();
+    setQuestionStartedAt(Date.now());
+    setCurrentQuestionIndex(questionIndex);
+  }
+
+  function getNextPendingQuestionIndex({
+    answeredQuestionIndexes: pendingAnsweredQuestionIndexes,
+    skippedQuestionIndexes: pendingSkippedQuestionIndexes,
+  }: QuestionProgressState) {
+    if (!session) {
+      return undefined;
+    }
+
+    const answeredQuestionIndexSet = new Set(pendingAnsweredQuestionIndexes);
+
+    for (
+      let questionIndex = currentQuestionIndex + 1;
+      questionIndex < session.totalQuestions;
+      questionIndex += 1
+    ) {
+      if (!answeredQuestionIndexSet.has(questionIndex)) {
+        return questionIndex;
+      }
+    }
+
+    const nextSkippedQuestionIndex = pendingSkippedQuestionIndexes.find(
+      (questionIndex) => !answeredQuestionIndexSet.has(questionIndex),
+    );
+
+    if (typeof nextSkippedQuestionIndex === "number") {
+      return nextSkippedQuestionIndex;
+    }
+
+    for (
+      let questionIndex = 0;
+      questionIndex < currentQuestionIndex;
+      questionIndex += 1
+    ) {
+      if (!answeredQuestionIndexSet.has(questionIndex)) {
+        return questionIndex;
+      }
+    }
+
+    return undefined;
+  }
+
+  function goToNextQuestionOrResult(progressState: QuestionProgressState) {
     if (!session) {
       return;
     }
 
-    const isLastQuestion = currentQuestionIndex === session.totalQuestions - 1;
+    const nextQuestionIndex = getNextPendingQuestionIndex(progressState);
 
-    if (isLastQuestion) {
-      router.push("/patient/assessment/result");
+    if (typeof nextQuestionIndex === "number") {
+      moveToQuestion(nextQuestionIndex);
       return;
     }
 
-    resetQuestionUiState();
-    setQuestionStartedAt(Date.now());
-    setCurrentQuestionIndex((index) => index + 1);
+    router.push("/patient/assessment/result");
+  }
+
+  function markCurrentQuestionAnswered() {
+    const nextAnsweredQuestionIndexes = answeredQuestionIndexes.includes(
+      currentQuestionIndex,
+    )
+      ? answeredQuestionIndexes
+      : [...answeredQuestionIndexes, currentQuestionIndex];
+    const nextSkippedQuestionIndexes = skippedQuestionIndexes.filter(
+      (questionIndex) => questionIndex !== currentQuestionIndex,
+    );
+
+    if (nextAnsweredQuestionIndexes !== answeredQuestionIndexes) {
+      setAnsweredQuestionIndexes(nextAnsweredQuestionIndexes);
+    }
+
+    if (nextSkippedQuestionIndexes.length !== skippedQuestionIndexes.length) {
+      setSkippedQuestionIndexes(nextSkippedQuestionIndexes);
+    }
+
+    return {
+      answeredQuestionIndexes: nextAnsweredQuestionIndexes,
+      skippedQuestionIndexes: nextSkippedQuestionIndexes,
+    };
+  }
+
+  function markCurrentQuestionSkipped() {
+    const nextAnsweredQuestionIndexes = answeredQuestionIndexes.filter(
+      (questionIndex) => questionIndex !== currentQuestionIndex,
+    );
+    const nextSkippedQuestionIndexes = skippedQuestionIndexes.includes(
+      currentQuestionIndex,
+    )
+      ? skippedQuestionIndexes
+      : [...skippedQuestionIndexes, currentQuestionIndex];
+
+    if (nextAnsweredQuestionIndexes.length !== answeredQuestionIndexes.length) {
+      setAnsweredQuestionIndexes(nextAnsweredQuestionIndexes);
+    }
+
+    if (nextSkippedQuestionIndexes !== skippedQuestionIndexes) {
+      setSkippedQuestionIndexes(nextSkippedQuestionIndexes);
+    }
+
+    return {
+      answeredQuestionIndexes: nextAnsweredQuestionIndexes,
+      skippedQuestionIndexes: nextSkippedQuestionIndexes,
+    };
+  }
+
+  function handleReviewSkippedQuestion() {
+    const nextSkippedQuestionIndex = skippedQuestionIndexes[0];
+
+    if (typeof nextSkippedQuestionIndex !== "number") {
+      return;
+    }
+
+    moveToQuestion(nextSkippedQuestionIndex);
   }
 
   function getAnswerMetadata(): Pick<
@@ -873,10 +1130,12 @@ export function AssessmentSessionClient() {
       return;
     }
 
+    const nextQuestionProgress = markCurrentQuestionAnswered();
+
     window.setTimeout(() => {
       setImageChoiceFeedbackVisible(false);
       setIsImageChoiceSaving(false);
-      goToNextQuestionOrResult();
+      goToNextQuestionOrResult(nextQuestionProgress);
     }, 1200);
   }
 
@@ -909,10 +1168,12 @@ export function AssessmentSessionClient() {
       return;
     }
 
+    const nextQuestionProgress = markCurrentQuestionAnswered();
+
     window.setTimeout(() => {
       setImageChoiceFeedbackVisible(false);
       setIsImageChoiceSaving(false);
-      goToNextQuestionOrResult();
+      goToNextQuestionOrResult(nextQuestionProgress);
     }, 1200);
   }
 
@@ -920,6 +1181,9 @@ export function AssessmentSessionClient() {
     if (!session || isSkipping) {
       return;
     }
+
+    const currentWasSkipped =
+      skippedQuestionIndexes.includes(currentQuestionIndex);
 
     setIsSkipping(true);
 
@@ -931,78 +1195,44 @@ export function AssessmentSessionClient() {
       isCorrect: false,
       ...getAnswerMetadata(),
     };
-    const isSaved = await saveCurrentAnswer(skippedAnswer);
+    const isSaved = currentWasSkipped
+      ? true
+      : await saveCurrentAnswer(skippedAnswer);
 
     setIsSkipping(false);
 
     if (isSaved) {
+      const nextQuestionProgress = markCurrentQuestionSkipped();
       setFeedbackType("skipped");
       setFeedbackVisible(true);
       window.setTimeout(() => {
         setFeedbackVisible(false);
-        goToNextQuestionOrResult();
+        goToNextQuestionOrResult(nextQuestionProgress);
       }, 1200);
     }
   }
 
   function handleReplayPrompt() {
+    if (!currentQuestion || !isVoiceQuestion) return;
+
     setShowReplayFeedback(true);
+    lastAutoPromptQuestionIdRef.current = currentQuestion.id;
+    void startPromptFlow(promptText);
 
     window.setTimeout(() => {
       setShowReplayFeedback(false);
     }, 700);
   }
 
-  async function handleMicrophoneToggle() {
-    if (recordingState === "processing") {
-      return;
-    }
+  function handleRetryRecording() {
+    if (!currentQuestion || !isVoiceQuestion) return;
 
-    if (recordingState === "recording") {
-      setRecordingState("processing");
+    lastAutoPromptQuestionIdRef.current = currentQuestion.id;
+    retryCurrentQuestion();
+  }
 
-      window.setTimeout(async () => {
-        setHasMockRecording(true);
-
-        const currentQuestion = session?.questions[currentQuestionIndex];
-        const mockAnswer = getMockAnswerForQuestion(currentQuestion!);
-        const rnd = Math.random();
-        const outcome = rnd > 0.8 ? "wrong" : rnd > 0.45 ? "almost" : "correct";
-
-        setFeedbackMockAnswer(mockAnswer ?? "");
-        setFeedbackExpected(currentQuestion?.expectedAnswer ?? undefined);
-        setFeedbackType(outcome as "correct" | "almost" | "wrong");
-        setFeedbackVisible(true);
-
-        if (currentQuestion) {
-          const answer: AssessmentAnswer = {
-            questionId: currentQuestion.id,
-            answerType: isImageChoiceInteraction(currentQuestion.interactionType)
-              ? "image_choice"
-              : "mock_audio",
-            mockRecordingState: "recorded",
-            mockAnswer,
-            isCorrect: outcome === "correct",
-            ...getAnswerMetadata(),
-          };
-
-          await saveCurrentAnswer(answer);
-        }
-
-        const delay = outcome === "correct" ? 5000 : 3000;
-
-        window.setTimeout(() => {
-          setFeedbackVisible(false);
-          setRecordingState("idle");
-          goToNextQuestionOrResult();
-        }, delay);
-      }, 900);
-
-      return;
-    }
-
-    setHasMockRecording(false);
-    setRecordingState("recording");
+  function handleStopAnswer() {
+    stopAnswer("manual-stop");
   }
 
   if (isLoading) {
@@ -1029,15 +1259,13 @@ export function AssessmentSessionClient() {
     return null;
   }
 
-  const currentQuestion = session.questions[currentQuestionIndex];
+  if (!currentQuestion) {
+    return null;
+  }
+
   const progressPercent = (currentQuestion.order / session.totalQuestions) * 100;
-  const isVoiceQuestion = isVoiceInteraction(currentQuestion.interactionType);
-  const isImageChoiceQuestion = isImageChoiceInteraction(
-    currentQuestion.interactionType,
-  );
-  const isYesNoQuestion = isYesNoInteraction(currentQuestion.interactionType);
   const categoryLabel = getCategoryDisplay(currentQuestion);
-  const promptText = getDisplayPrompt(currentQuestion.promptText);
+
   return (
     <main className="flex h-dvh items-center justify-center overflow-hidden bg-[linear-gradient(180deg,#F6FEFF_0%,#EAF9FB_58%,#DFF3F5_100%)] p-6 text-[#123232]">
       <section className="relative mx-auto flex h-[calc(100dvh-48px)] max-h-[860px] min-h-[680px] w-[min(1500px,calc(100vw-48px))] flex-col overflow-hidden rounded-[36px] bg-white/95 px-9 py-7 shadow-[0_26px_70px_rgba(17,103,99,0.15)] ring-1 ring-[#CDEEEF]">
@@ -1107,11 +1335,16 @@ export function AssessmentSessionClient() {
           <div className="flex min-h-0 items-center justify-center">
             {isVoiceQuestion ? (
               <VoiceControls
+                audioLevel={voiceAudioLevel}
+                debugSnapshot={voiceDebugSnapshot}
+                errorMessage={
+                  voiceErrorMessage || autoRecorderErrorMessage
+                }
                 recordingState={recordingState}
-                hasMockRecording={hasMockRecording}
                 showReplayFeedback={showReplayFeedback}
-                onMicrophoneToggle={handleMicrophoneToggle}
                 onReplayPrompt={handleReplayPrompt}
+                onRetryRecording={handleRetryRecording}
+                onStopAnswer={handleStopAnswer}
               />
             ) : null}
 
@@ -1145,7 +1378,9 @@ export function AssessmentSessionClient() {
 
         <BottomControls
           isSkipping={isSkipping}
+          skippedCount={skippedQuestionIndexes.length}
           onSkip={handleSkipQuestion}
+          onReviewSkipped={handleReviewSkippedQuestion}
         />
 
         <FeedbackOverlay

@@ -61,8 +61,13 @@ export async function saveStandardAssessmentAnswer(
     };
   }
 
+  const existingAnswer = mockSavedStandardAssessmentAnswers.find(
+    (item) => item.questionId === answer.questionId,
+  );
   const savedAnswer: SavedAssessmentAnswer = {
-    answerId: `mock-answer-${mockSavedStandardAssessmentAnswers.length + 1}`,
+    answerId:
+      existingAnswer?.answerId ??
+      `mock-answer-${mockSavedStandardAssessmentAnswers.length + 1}`,
     questionId: answer.questionId,
     answerType: answer.answerType,
     selectedOptionId: answer.selectedOptionId,
@@ -75,7 +80,15 @@ export async function saveStandardAssessmentAnswer(
     savedAt: new Date().toISOString(),
   };
 
-  mockSavedStandardAssessmentAnswers.push(savedAnswer);
+  const existingAnswerIndex = mockSavedStandardAssessmentAnswers.findIndex(
+    (item) => item.questionId === savedAnswer.questionId,
+  );
+
+  if (existingAnswerIndex === -1) {
+    mockSavedStandardAssessmentAnswers.push(savedAnswer);
+  } else {
+    mockSavedStandardAssessmentAnswers[existingAnswerIndex] = savedAnswer;
+  }
 
   return {
     success: true,

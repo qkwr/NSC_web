@@ -254,16 +254,46 @@ export async function submitMockNamingAnswer(
   await waitForMockApi();
 
   // TODO: replace mock data with backend API integration.
+  const existingResponse = getAllNamingResponses().find(
+    (item) =>
+      item.sessionId === response.sessionId &&
+      item.questionId === response.questionId,
+  );
   const savedResponse: NamingResponse = {
     ...response,
-    responseId: `pn002-response-${getAllNamingResponses().length + 1}`,
+    responseId:
+      existingResponse?.responseId ??
+      `pn002-response-${getAllNamingResponses().length + 1}`,
     submittedAt: new Date().toISOString(),
   };
 
   if (canUseLocalStorage()) {
-    writeStoredNamingResponses([...readStoredNamingResponses(), savedResponse]);
+    const storedResponses = readStoredNamingResponses();
+    const existingResponseIndex = storedResponses.findIndex(
+      (item) =>
+        item.sessionId === savedResponse.sessionId &&
+        item.questionId === savedResponse.questionId,
+    );
+
+    if (existingResponseIndex === -1) {
+      writeStoredNamingResponses([...storedResponses, savedResponse]);
+    } else {
+      const nextResponses = [...storedResponses];
+      nextResponses[existingResponseIndex] = savedResponse;
+      writeStoredNamingResponses(nextResponses);
+    }
   } else {
-    mockNamingResponses.push(savedResponse);
+    const existingResponseIndex = mockNamingResponses.findIndex(
+      (item) =>
+        item.sessionId === savedResponse.sessionId &&
+        item.questionId === savedResponse.questionId,
+    );
+
+    if (existingResponseIndex === -1) {
+      mockNamingResponses.push(savedResponse);
+    } else {
+      mockNamingResponses[existingResponseIndex] = savedResponse;
+    }
   }
 
   const session = getAllNamingSessions().find(
@@ -271,12 +301,14 @@ export async function submitMockNamingAnswer(
   );
 
   if (session) {
-    const hasExistingResponse = session.responses.some(
+    const existingSessionResponseIndex = session.responses.findIndex(
       (item) => item.questionId === savedResponse.questionId,
     );
 
-    if (!hasExistingResponse) {
+    if (existingSessionResponseIndex === -1) {
       session.responses.push(savedResponse);
+    } else {
+      session.responses[existingSessionResponseIndex] = savedResponse;
     }
 
     if (canUseLocalStorage()) {

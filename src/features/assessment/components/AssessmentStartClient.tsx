@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PrimaryActionButton } from "@/components/ui/PrimaryActionButton";
+import { requestAutoRecordingMicrophoneStream } from "@/features/speech/hooks/useAutoVoiceRecorder";
 import { getStandardAssessmentIntro } from "../services/standardAssessmentService";
 import type { StandardAssessmentIntro } from "../types/assessment.types";
 
@@ -54,29 +55,28 @@ export function AssessmentStartClient() {
     setMicrophoneStatus("checking");
 
     try {
-      if (!navigator.mediaDevices?.getUserMedia) {
-        setMicrophoneStatus("denied");
-        return;
-      }
-
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
-      });
-
-      stream.getTracks().forEach((track) => track.stop());
+      await requestAutoRecordingMicrophoneStream();
       setMicrophoneStatus("granted");
     } catch {
       setMicrophoneStatus("denied");
     }
   }
 
-  function goToAssessmentSession() {
-    router.push("/patient/assessment/session");
+  async function goToAssessmentSession() {
+    setMicrophoneStatus("checking");
+
+    try {
+      await requestAutoRecordingMicrophoneStream();
+      setMicrophoneStatus("granted");
+      router.push("/patient/assessment/session");
+    } catch {
+      setMicrophoneStatus("denied");
+    }
   }
 
   return (
-    <main className="min-h-dvh bg-[linear-gradient(180deg,#F6FEFF_0%,#EAF9FB_58%,#DFF3F5_100%)] px-5 py-6 text-[#123232] sm:px-8 sm:py-7">
-      <div className="mx-auto flex min-h-[calc(100dvh-3rem)] w-full max-w-[1140px] flex-col">
+    <main className="flex h-dvh overflow-hidden bg-[linear-gradient(180deg,#F6FEFF_0%,#EAF9FB_58%,#DFF3F5_100%)] px-5 py-5 text-[#123232] sm:px-8 sm:py-6">
+      <div className="mx-auto flex h-full w-full max-w-[1140px] flex-col">
         <Link
           className="mb-4 inline-flex min-h-[56px] w-fit max-w-max items-center justify-center rounded-full border border-[#C8E9EA] bg-white px-7 text-xl font-semibold text-[#1A7F78] shadow-[0_10px_24px_rgba(24,112,108,0.1)] outline-none transition hover:bg-[#F5FEFF] focus:ring-4 focus:ring-[#1FA89C]/20 active:scale-95"
           href="/patient/home"
@@ -84,7 +84,7 @@ export function AssessmentStartClient() {
           ← กลับ
         </Link>
 
-        <section className="flex flex-1 items-start justify-center pt-1 sm:items-center sm:pt-0">
+        <section className="flex min-h-0 flex-1 items-start justify-center pt-1 sm:items-center sm:pt-0">
           {isLoading ? (
             <p className="text-center text-3xl font-bold text-[#45686A]">
               กำลังโหลด...

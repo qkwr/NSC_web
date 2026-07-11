@@ -1,9 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState, type SVGProps } from "react";
+import { useEffect, useMemo, useRef, useState, type SVGProps } from "react";
 import { useRouter } from "next/navigation";
 import { TrainingImageFrame } from "./TrainingImageFrame";
+import {
+  getVoiceRecordingStatusText,
+  useAutoVoiceRecorder,
+} from "@/features/speech/hooks/useAutoVoiceRecorder";
 import {
   createMockNamingSession,
   getMockNamingSessionById,
@@ -20,7 +24,10 @@ import type {
   NamingSet,
 } from "../types/pn002Naming.types";
 
-type RecordingState = "idle" | "recording" | "processing" | "recorded";
+type QuestionProgressState = {
+  answeredQuestionIndexes: number[];
+  skippedQuestionIndexes: number[];
+};
 
 type NamingTrainingSessionClientProps = {
   sessionId?: string;
@@ -66,6 +73,23 @@ function SpeakerIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+function CloseIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth="2.5"
+      {...props}
+    >
+      <path d="M18 6 6 18" />
+      <path d="m6 6 12 12" />
+    </svg>
+  );
+}
+
 function LightbulbIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg
@@ -103,35 +127,10 @@ function ArrowRightIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
-function SkipIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      {...props}
-    >
-      <path d="m5 5 8 7-8 7V5Z" />
-      <path d="M19 5v14" />
-    </svg>
-  );
-}
-
 function getHintBadge(hint: NamingHint) {
   if (hint.type === "category") return "หมวดคำ";
   if (hint.type === "feature") return "ลักษณะ";
   return "เสียงขึ้นต้น";
-}
-
-function getMicText(recordingState: RecordingState) {
-  if (recordingState === "recording") return "กดอีกครั้งเพื่อหยุด";
-  if (recordingState === "processing") return "กำลังบันทึก";
-  if (recordingState === "recorded") return "บันทึกเสียงแล้ว";
-  return "กดเพื่อพูดตอบ";
 }
 
 function HintOverlay({
@@ -167,12 +166,12 @@ function HintOverlay({
 
 function QuestionPanel({ question }: { question: NamingQuestion }) {
   return (
-    <article className="flex h-full min-h-[440px] w-full max-w-[620px] flex-col items-center justify-center gap-5 rounded-[34px] bg-white/96 px-7 py-6 text-center shadow-[0_18px_48px_rgba(17,103,99,0.12)] ring-1 ring-[#CDEEEF]">
+    <article className="flex h-full min-h-0 w-full max-w-[560px] flex-col items-center justify-center gap-3 rounded-[28px] bg-white/96 px-5 py-5 text-center shadow-[0_18px_48px_rgba(17,103,99,0.12)] ring-1 ring-[#CDEEEF]">
       <p className="inline-flex min-h-[38px] items-center justify-center rounded-full bg-[#F2FBFB] px-5 text-base font-semibold text-[#12847D] ring-1 ring-[#CDEEEF]">
         แบบฝึกเรียกชื่อภาพ
       </p>
       <TrainingImageFrame alt={question.answer} imageSrc={question.imageSrc} />
-      <h1 className="max-w-full break-words text-center text-[clamp(2.25rem,4vw,3.75rem)] font-bold leading-[1.05] text-[#143839]">
+      <h1 className="max-w-full break-words text-center text-[clamp(1.85rem,3.25vw,3.1rem)] font-bold leading-[1.05] text-[#143839]">
         {question.promptText}
       </h1>
     </article>
@@ -188,16 +187,22 @@ export function NamingTrainingSessionClient({
   const [session, setSession] = useState<NamingSessionState | null>(null);
   const [summary, setSummary] = useState<NamingSessionSummary | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [recordingState, setRecordingState] = useState<RecordingState>("idle");
+  const [isPracticeStarted, setIsPracticeStarted] = useState(false);
+  const [skippedQuestionIndexes, setSkippedQuestionIndexes] = useState<
+    number[]
+  >([]);
+  const [answeredQuestionIndexes, setAnsweredQuestionIndexes] = useState<
+    number[]
+  >([]);
   const [hintLevel, setHintLevel] = useState<0 | 1 | 2 | 3>(0);
   const [activeHint, setActiveHint] = useState<NamingHint>();
   const [showReplayFeedback, setShowReplayFeedback] = useState(false);
   const [questionStartedAt, setQuestionStartedAt] = useState(() => Date.now());
-  const [typedAnswer, setTypedAnswer] = useState("");
-  const [answerError, setAnswerError] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [voiceErrorMessage, setVoiceErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const lastAutoPromptQuestionIdRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     let isActive = true;
@@ -277,39 +282,234 @@ export function NamingTrainingSessionClient({
   }, [sessionId, setId]);
 
   const currentQuestion = set?.questions[currentQuestionIndex];
+  const {
+    audioLevel: voiceAudioLevel,
+    debugSnapshot: voiceDebugSnapshot,
+    errorMessage: autoRecorderErrorMessage,
+    resetQuestion: resetAutoRecorderQuestion,
+    retryCurrentQuestion,
+    startPromptFlow,
+    state: recordingState,
+    stopAnswer,
+  } = useAutoVoiceRecorder({
+    promptText: currentQuestion?.promptText ?? "",
+    onRecordingComplete: async (recordingResult) => {
+      if (!currentQuestion) return;
+      if (recordingResult.sizeBytes <= 0) return;
+
+      // The recorder now provides a real Blob boundary. This repo has no ASR
+      // service yet, so the existing mock answer flow still drives scoring.
+      const isSaved = await saveAnswer("mock_audio", currentQuestion.answer);
+      if (isSaved) markCurrentQuestionAnswered();
+    },
+    onError: setVoiceErrorMessage,
+  });
   const progressPercent = set
     ? ((currentQuestionIndex + 1) / set.totalQuestions) * 100
     : 0;
-  const canGoNext = recordingState === "recorded";
+  const isVoiceBusy =
+    recordingState === "requesting-permission" ||
+    recordingState === "tts-playing" ||
+    recordingState === "listening" ||
+    recordingState === "speaking" ||
+    recordingState === "processing";
+  const canAdvanceQuestion = !isVoiceBusy && !isSaving;
 
   const hintButtonText = useMemo(
     () => `คำใบ้ ${hintLevel}/3`,
     [hintLevel],
   );
 
-  function resetQuestionState() {
-    setRecordingState("idle");
-    setHintLevel(0);
-    setActiveHint(undefined);
-    setShowReplayFeedback(false);
-    setTypedAnswer("");
-    setAnswerError("");
-    setQuestionStartedAt(Date.now());
-  }
-
-  async function goToNextQuestion() {
-    if (!set || !session || !currentQuestion) return;
-
-    const isLastQuestion = currentQuestionIndex === set.totalQuestions - 1;
-
-    if (isLastQuestion) {
-      const result = await getMockNamingSessionSummary(session.sessionId);
-      if (result.success) setSummary(result.data);
+  useEffect(() => {
+    if (!isPracticeStarted || !currentQuestion) {
       return;
     }
 
+    if (lastAutoPromptQuestionIdRef.current === currentQuestion.id) {
+      return;
+    }
+
+    lastAutoPromptQuestionIdRef.current = currentQuestion.id;
+    void startPromptFlow(currentQuestion.promptText);
+  }, [
+    currentQuestion,
+    isPracticeStarted,
+    startPromptFlow,
+  ]);
+
+  async function handleStartPractice() {
+    if (!currentQuestion) return;
+
+    setIsPracticeStarted(true);
+    lastAutoPromptQuestionIdRef.current = currentQuestion.id;
+    await startPromptFlow(currentQuestion.promptText);
+  }
+
+  function handleRetryRecording() {
+    if (!currentQuestion) return;
+
+    lastAutoPromptQuestionIdRef.current = currentQuestion.id;
+    retryCurrentQuestion();
+  }
+
+  function handleStopAnswer() {
+    stopAnswer("manual-stop");
+  }
+
+  function resetQuestionState() {
+    resetAutoRecorderQuestion();
+    setHintLevel(0);
+    setActiveHint(undefined);
+    setShowReplayFeedback(false);
+    setVoiceErrorMessage("");
+    setQuestionStartedAt(Date.now());
+  }
+
+  function moveToQuestion(questionIndex: number) {
     resetQuestionState();
-    setCurrentQuestionIndex((index) => index + 1);
+    setCurrentQuestionIndex(questionIndex);
+  }
+
+  function markCurrentQuestionAnswered() {
+    const nextAnsweredQuestionIndexes = answeredQuestionIndexes.includes(
+      currentQuestionIndex,
+    )
+      ? answeredQuestionIndexes
+      : [...answeredQuestionIndexes, currentQuestionIndex];
+    const nextSkippedQuestionIndexes = skippedQuestionIndexes.filter(
+      (questionIndex) => questionIndex !== currentQuestionIndex,
+    );
+
+    if (nextAnsweredQuestionIndexes !== answeredQuestionIndexes) {
+      setAnsweredQuestionIndexes(nextAnsweredQuestionIndexes);
+    }
+
+    if (nextSkippedQuestionIndexes.length !== skippedQuestionIndexes.length) {
+      setSkippedQuestionIndexes(nextSkippedQuestionIndexes);
+    }
+
+    return {
+      answeredQuestionIndexes: nextAnsweredQuestionIndexes,
+      skippedQuestionIndexes: nextSkippedQuestionIndexes,
+    };
+  }
+
+  function markCurrentQuestionSkipped() {
+    const nextAnsweredQuestionIndexes = answeredQuestionIndexes.filter(
+      (questionIndex) => questionIndex !== currentQuestionIndex,
+    );
+    const nextSkippedQuestionIndexes = skippedQuestionIndexes.includes(
+      currentQuestionIndex,
+    )
+      ? skippedQuestionIndexes
+      : [...skippedQuestionIndexes, currentQuestionIndex];
+
+    if (nextAnsweredQuestionIndexes.length !== answeredQuestionIndexes.length) {
+      setAnsweredQuestionIndexes(nextAnsweredQuestionIndexes);
+    }
+
+    if (nextSkippedQuestionIndexes !== skippedQuestionIndexes) {
+      setSkippedQuestionIndexes(nextSkippedQuestionIndexes);
+    }
+
+    return {
+      answeredQuestionIndexes: nextAnsweredQuestionIndexes,
+      skippedQuestionIndexes: nextSkippedQuestionIndexes,
+    };
+  }
+
+  function handleReviewSkippedQuestion() {
+    const nextSkippedQuestionIndex = skippedQuestionIndexes[0];
+
+    if (typeof nextSkippedQuestionIndex !== "number") {
+      return;
+    }
+
+    moveToQuestion(nextSkippedQuestionIndex);
+  }
+
+  async function completeTrainingSession() {
+    if (!session) return;
+
+    const result = await getMockNamingSessionSummary(session.sessionId);
+    if (result.success) setSummary(result.data);
+  }
+
+  function getNextPendingQuestionIndex({
+    answeredQuestionIndexes: pendingAnsweredQuestionIndexes,
+    skippedQuestionIndexes: pendingSkippedQuestionIndexes,
+  }: QuestionProgressState) {
+    if (!set) {
+      return undefined;
+    }
+
+    const answeredQuestionIndexSet = new Set(pendingAnsweredQuestionIndexes);
+
+    for (
+      let questionIndex = currentQuestionIndex + 1;
+      questionIndex < set.totalQuestions;
+      questionIndex += 1
+    ) {
+      if (!answeredQuestionIndexSet.has(questionIndex)) {
+        return questionIndex;
+      }
+    }
+
+    const nextSkippedQuestionIndex = pendingSkippedQuestionIndexes.find(
+      (questionIndex) => !answeredQuestionIndexSet.has(questionIndex),
+    );
+
+    if (typeof nextSkippedQuestionIndex === "number") {
+      return nextSkippedQuestionIndex;
+    }
+
+    for (
+      let questionIndex = 0;
+      questionIndex < currentQuestionIndex;
+      questionIndex += 1
+    ) {
+      if (!answeredQuestionIndexSet.has(questionIndex)) {
+        return questionIndex;
+      }
+    }
+
+    return undefined;
+  }
+
+  async function goToNextQuestion(progressState: QuestionProgressState) {
+    if (!set || !session || !currentQuestion) return;
+
+    const nextQuestionIndex = getNextPendingQuestionIndex(progressState);
+
+    if (typeof nextQuestionIndex === "number") {
+      moveToQuestion(nextQuestionIndex);
+      return;
+    }
+
+    await completeTrainingSession();
+  }
+
+  async function handleAdvanceQuestion() {
+    if (!set || !session || !currentQuestion || isSaving || !canAdvanceQuestion) {
+      return;
+    }
+
+    if (recordingState === "completed") {
+      const nextQuestionProgress = markCurrentQuestionAnswered();
+      await goToNextQuestion(nextQuestionProgress);
+      return;
+    }
+
+    const currentWasSkipped =
+      skippedQuestionIndexes.includes(currentQuestionIndex);
+    const isSaved = currentWasSkipped ? true : await saveAnswer("skipped");
+
+    if (!isSaved) {
+      return;
+    }
+
+    const nextQuestionProgress = markCurrentQuestionSkipped();
+    await goToNextQuestion(nextQuestionProgress);
   }
 
   function normalizeAnswer(answer: string) {
@@ -356,7 +556,11 @@ export function NamingTrainingSessionClient({
   }
 
   function handleReplayPrompt() {
+    if (!currentQuestion || !isPracticeStarted) return;
+
     setShowReplayFeedback(true);
+    lastAutoPromptQuestionIdRef.current = currentQuestion.id;
+    void startPromptFlow(currentQuestion.promptText);
     window.setTimeout(() => setShowReplayFeedback(false), 800);
   }
 
@@ -369,46 +573,6 @@ export function NamingTrainingSessionClient({
       currentQuestion.hints.find((hint) => hint.level === nextHintLevel) ??
         currentQuestion.hints[currentQuestion.hints.length - 1],
     );
-  }
-
-  async function handleMicrophoneToggle() {
-    if (!currentQuestion || recordingState === "processing") return;
-
-    if (recordingState === "recording") {
-      setRecordingState("processing");
-      window.setTimeout(async () => {
-        const isSaved = await saveAnswer("mock_audio", currentQuestion.answer);
-        if (isSaved) setRecordingState("recorded");
-      }, 600);
-      return;
-    }
-
-    if (recordingState === "recorded") {
-      setRecordingState("recording");
-      return;
-    }
-
-    setRecordingState("recording");
-  }
-
-  async function handleSkipQuestion() {
-    const isSaved = await saveAnswer("skipped");
-    if (isSaved) {
-      await goToNextQuestion();
-    }
-  }
-
-  async function handleTypedAnswerSubmit() {
-    if (!typedAnswer.trim()) {
-      setAnswerError("กรุณากรอกคำตอบก่อนบันทึก");
-      return;
-    }
-
-    setAnswerError("");
-    const isSaved = await saveAnswer("mock_audio", typedAnswer);
-    if (isSaved) {
-      setRecordingState("recorded");
-    }
   }
 
   if (isLoading) {
@@ -489,9 +653,17 @@ export function NamingTrainingSessionClient({
     );
   }
 
+  const voiceStatusText = getVoiceRecordingStatusText(recordingState);
+  const showStopFallback =
+    recordingState === "listening" || recordingState === "speaking";
+  const showRetryFallback =
+    recordingState === "no-speech" ||
+    recordingState === "error" ||
+    recordingState === "completed";
+
   return (
-    <main className="min-h-dvh overflow-hidden bg-[linear-gradient(180deg,#F6FEFF_0%,#EAF9FB_58%,#DFF3F5_100%)] p-4 text-[#123232] sm:p-6">
-      <section className="relative mx-auto flex min-h-[calc(100dvh-2rem)] w-full max-w-[1500px] flex-col overflow-hidden rounded-[36px] bg-white/95 px-5 py-5 shadow-[0_26px_70px_rgba(17,103,99,0.15)] ring-1 ring-[#CDEEEF] sm:min-h-[calc(100dvh-3rem)] sm:px-8 sm:py-6">
+    <main className="flex h-dvh items-center justify-center overflow-hidden bg-[linear-gradient(180deg,#F6FEFF_0%,#EAF9FB_58%,#DFF3F5_100%)] p-3 text-[#123232] sm:p-5">
+      <section className="relative mx-auto flex h-[calc(100dvh-1.5rem)] min-h-0 w-[min(1500px,calc(100vw-1.5rem))] max-w-[1500px] flex-col overflow-hidden rounded-[30px] bg-white/95 px-5 py-4 shadow-[0_26px_70px_rgba(17,103,99,0.15)] ring-1 ring-[#CDEEEF] sm:h-[calc(100dvh-2.5rem)] sm:w-[min(1500px,calc(100vw-2.5rem))] sm:px-7 sm:py-5">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute -bottom-20 left-0 h-44 w-[44%] rounded-tr-[100%] bg-[#D8F4F0]/80"
@@ -501,14 +673,43 @@ export function NamingTrainingSessionClient({
           className="pointer-events-none absolute -bottom-14 right-0 h-44 w-[52%] rounded-tl-[100%] bg-[#D8F4F0]/78"
         />
 
-        <header className="relative z-10 grid gap-4 lg:grid-cols-[180px_minmax(0,1fr)_180px]">
+        {!isPracticeStarted ? (
+          <div className="absolute inset-0 z-40 flex items-center justify-center bg-white/88 px-6 backdrop-blur-sm">
+            <div className="w-full max-w-[560px] rounded-[30px] bg-white px-8 py-9 text-center shadow-[0_24px_70px_rgba(17,103,99,0.18)] ring-1 ring-[#CDEEEF]">
+              <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-[#1FA89C] text-white shadow-[0_18px_36px_rgba(31,168,156,0.24)]">
+                <MicrophoneIcon className="h-14 w-14" />
+              </div>
+              <h2 className="mt-6 text-[2.15rem] font-bold leading-tight text-[#123232]">
+                เริ่มการฝึก
+              </h2>
+              <p className="mx-auto mt-3 max-w-[420px] text-xl font-semibold leading-8 text-[#557276]">
+                ระบบจะอ่านโจทย์ แล้วฟังคำตอบให้อัตโนมัติ
+              </p>
+              <button
+                className="mx-auto mt-7 flex min-h-[66px] w-full max-w-[360px] items-center justify-center rounded-[24px] bg-[#1FA89C] px-7 text-2xl font-bold text-white shadow-[0_16px_34px_rgba(31,168,156,0.24)] transition hover:bg-[#178F84] focus:outline-none focus:ring-4 focus:ring-[#1FA89C]/30 active:scale-[0.98]"
+                onClick={handleStartPractice}
+                type="button"
+              >
+                เริ่มการฝึก
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        <header className="relative z-10 grid h-[clamp(94px,13vh,118px)] shrink-0 gap-3 lg:grid-cols-[180px_minmax(0,1fr)_180px]">
+          <div className="flex flex-col items-start gap-2">
             <button
-              className="inline-flex min-h-[52px] w-fit items-center justify-center rounded-full bg-white px-6 text-base font-semibold text-[#13756F] shadow-[0_10px_24px_rgba(17,103,99,0.1)] ring-1 ring-[#CDEEEF] transition hover:bg-[#F7FFFF]"
+              aria-label="ออกจากแบบฝึก"
+              className="flex h-[clamp(58px,8vh,66px)] w-[clamp(58px,8vh,66px)] items-center justify-center rounded-full bg-white text-[#0D5960] shadow-[0_10px_24px_rgba(17,103,99,0.12)] ring-1 ring-[#D5EFF0] transition hover:bg-[#F7FFFF] focus:outline-none focus:ring-4 focus:ring-[#1FA89C]/20 active:scale-[0.98]"
               onClick={() => router.replace("/patient/training/today")}
               type="button"
             >
-              ออกจากแบบฝึก
+              <CloseIcon className="h-[54%] w-[54%]" />
             </button>
+            <p className="text-sm font-semibold leading-none text-[#13756F]">
+              ออกจากแบบฝึก
+            </p>
+          </div>
 
           <div className="text-center">
             <div className="mx-auto max-w-[820px]">
@@ -519,10 +720,10 @@ export function NamingTrainingSessionClient({
                 />
               </div>
             </div>
-            <p className="mt-3 text-xl font-bold text-[#183C3F]">
+            <p className="mt-2 text-lg font-bold text-[#183C3F]">
               ข้อที่ {currentQuestionIndex + 1} จากทั้งหมด {set.totalQuestions} ข้อ
             </p>
-            <p className="mx-auto mt-6 inline-flex min-h-[38px] items-center rounded-full bg-[#F2FBFB] px-5 text-base font-semibold text-[#12847D] ring-1 ring-[#CDEEEF]">
+            <p className="mx-auto mt-3 inline-flex min-h-[34px] items-center rounded-full bg-[#F2FBFB] px-5 text-base font-semibold text-[#12847D] ring-1 ring-[#CDEEEF]">
               หมวดสัตว์
             </p>
           </div>
@@ -530,13 +731,13 @@ export function NamingTrainingSessionClient({
           <div className="hidden lg:block" />
         </header>
 
-        <div className="relative z-10 grid flex-1 items-center gap-7 py-5 lg:grid-cols-[minmax(420px,0.94fr)_minmax(460px,1.06fr)] lg:pb-[92px]">
+        <div className="relative z-10 grid min-h-0 flex-1 items-center gap-5 py-3 lg:grid-cols-[minmax(360px,0.95fr)_minmax(420px,1.05fr)] lg:pb-[76px]">
           <div className="flex min-h-0 justify-center">
             <QuestionPanel question={currentQuestion} />
           </div>
 
-          <section className="flex min-h-0 flex-col items-center justify-center gap-5 text-center">
-            <div className="relative flex h-[clamp(190px,34vh,270px)] w-full items-center justify-center">
+          <section className="flex min-h-0 flex-col items-center justify-center gap-3 text-center">
+            <div className="relative flex h-[clamp(150px,25vh,210px)] w-full items-center justify-center">
               <div className="absolute left-[8%] top-1/2 hidden -translate-y-1/2 items-center gap-2 text-[#86D9D2]/75 xl:flex">
                 {[9, 20, 34, 50, 68, 50, 34, 20, 9].map((height, index) => (
                   <span
@@ -556,65 +757,87 @@ export function NamingTrainingSessionClient({
                 ))}
               </div>
               <button
-                aria-label={getMicText(recordingState)}
-                className="relative flex h-[clamp(156px,22vh,198px)] w-[clamp(156px,22vh,198px)] items-center justify-center rounded-full outline-none transition hover:scale-[1.02] focus:ring-4 focus:ring-[#1FA89C]/25 active:scale-[0.98]"
-                onClick={handleMicrophoneToggle}
-                title={getMicText(recordingState)}
+                aria-label={voiceStatusText}
+                className="relative flex h-[clamp(126px,17vh,168px)] w-[clamp(126px,17vh,168px)] items-center justify-center rounded-full outline-none transition focus:ring-4 focus:ring-[#1FA89C]/25"
+                disabled={!showStopFallback && !showRetryFallback}
+                onClick={
+                  showStopFallback ? handleStopAnswer : handleRetryRecording
+                }
+                title={voiceStatusText}
                 type="button"
               >
                 <span
                   aria-hidden="true"
-                  className={`absolute inset-[-28px] rounded-full border-2 border-[#BFEAE7] ${
-                    recordingState === "recording" ? "animate-pulse" : ""
+                  className={`absolute inset-[-20px] rounded-full border-2 border-[#BFEAE7] ${
+                    recordingState === "listening" || recordingState === "speaking"
+                      ? "animate-pulse"
+                      : ""
                   }`}
                 />
-                <span className="relative flex h-full w-full items-center justify-center rounded-full bg-[linear-gradient(180deg,#41C9BE_0%,#13958C_100%)] text-white shadow-[0_18px_42px_rgba(20,149,141,0.28)]">
+                <span
+                  className="relative flex h-full w-full items-center justify-center rounded-full bg-[linear-gradient(180deg,#41C9BE_0%,#13958C_100%)] text-white shadow-[0_18px_42px_rgba(20,149,141,0.28)] transition-transform"
+                  style={{
+                    transform:
+                      recordingState === "speaking"
+                        ? `scale(${1 + Math.min(voiceAudioLevel * 1.6, 0.09)})`
+                        : undefined,
+                  }}
+                >
                   <MicrophoneIcon className="h-[54%] w-[54%]" />
                 </span>
               </button>
             </div>
 
-            <button
-              className={`inline-flex min-h-[60px] min-w-[260px] items-center justify-center rounded-full px-8 text-xl font-bold shadow-[0_10px_28px_rgba(17,103,99,0.12)] ring-1 transition focus:outline-none focus:ring-4 focus:ring-[#1FA89C]/20 active:scale-[0.98] ${
-                recordingState === "recording"
-                  ? "bg-[#FFF3F1] text-[#D92D20] ring-[#F8C9C4]"
-                  : "bg-white text-[#0F756F] ring-[#CDEEEF] hover:bg-[#F7FFFF]"
-              }`}
-              onClick={handleMicrophoneToggle}
-              type="button"
-            >
-              {getMicText(recordingState)}
-            </button>
-
-            <div className="w-full max-w-[420px] rounded-[26px] bg-white/90 p-4 text-left shadow-[0_10px_24px_rgba(17,103,99,0.08)] ring-1 ring-[#CDEEEF]">
-              <label
-                htmlFor="typed-training-answer"
-                className="text-base font-bold text-[#13756F]"
+            <div className="flex min-h-[84px] flex-col items-center justify-center gap-2">
+              <p
+                className={`inline-flex min-h-[52px] min-w-[260px] items-center justify-center rounded-full px-7 text-lg font-bold shadow-[0_10px_28px_rgba(17,103,99,0.12)] ring-1 ${
+                  recordingState === "no-speech" || recordingState === "error"
+                    ? "bg-[#FFF8E6] text-[#9A6A13] ring-[#F3E2B6]"
+                    : "bg-white text-[#0F756F] ring-[#CDEEEF]"
+                }`}
               >
-                กรอกคำตอบแทน
-              </label>
-              <div className="mt-3 flex flex-col gap-3 sm:flex-row">
-                <input
-                  id="typed-training-answer"
-                  className="min-h-[52px] flex-1 rounded-full border border-[#D7EFF0] bg-[#F8FEFF] px-5 text-lg font-semibold text-[#123232] outline-none focus:border-[#1FA89C] focus:ring-4 focus:ring-[#1FA89C]/15"
-                  placeholder="พิมพ์ชื่อภาพ"
-                  value={typedAnswer}
-                  onChange={(event) => setTypedAnswer(event.target.value)}
-                  disabled={recordingState === "recorded" || isSaving}
-                />
-                <button
-                  type="button"
-                  className="inline-flex min-h-[52px] items-center justify-center rounded-full bg-[#1FA89C] px-6 text-base font-bold text-white shadow-[0_10px_24px_rgba(31,168,156,0.22)] hover:bg-[#178F84] disabled:cursor-not-allowed disabled:opacity-55"
-                  onClick={handleTypedAnswerSubmit}
-                  disabled={recordingState === "recorded" || isSaving}
-                >
-                  บันทึกคำตอบ
-                </button>
-              </div>
-              {answerError ? (
-                <p className="mt-2 text-sm font-semibold text-[#B42318]">
-                  {answerError}
+                {voiceStatusText}
+              </p>
+
+              {voiceErrorMessage || autoRecorderErrorMessage ? (
+                <p className="max-w-[360px] text-sm font-semibold text-[#B42318]">
+                  {voiceErrorMessage || autoRecorderErrorMessage}
                 </p>
+              ) : null}
+
+              {process.env.NODE_ENV === "development" ? (
+                <p className="max-w-[420px] text-[11px] font-semibold text-[#557276]">
+                  DEV mic rms {voiceDebugSnapshot.rmsLevel.toFixed(3)} /
+                  threshold {voiceDebugSnapshot.speechThreshold.toFixed(3)}
+                  {" | "}chunks {voiceDebugSnapshot.chunkCount}
+                  {" | "}blob {voiceDebugSnapshot.sizeBytes} B
+                  {" | "}duration {voiceDebugSnapshot.durationMs} ms
+                  {voiceDebugSnapshot.stopReason
+                    ? ` | ${voiceDebugSnapshot.stopReason}`
+                    : ""}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="flex min-h-[44px] flex-wrap justify-center gap-3">
+              {showStopFallback ? (
+                <button
+                  className="inline-flex min-h-[40px] items-center justify-center rounded-full bg-white px-5 text-sm font-bold text-[#B42318] shadow-sm ring-1 ring-[#F8C9C4] transition hover:bg-[#FFF3F1] focus:outline-none focus:ring-4 focus:ring-[#D92D20]/15 active:scale-[0.98]"
+                  onClick={handleStopAnswer}
+                  type="button"
+                >
+                  หยุดตอบ
+                </button>
+              ) : null}
+
+              {showRetryFallback ? (
+                <button
+                  className="inline-flex min-h-[40px] items-center justify-center rounded-full bg-white px-5 text-sm font-bold text-[#13756F] shadow-sm ring-1 ring-[#CDEEEF] transition hover:bg-[#F7FFFF] focus:outline-none focus:ring-4 focus:ring-[#1FA89C]/20 active:scale-[0.98]"
+                  onClick={handleRetryRecording}
+                  type="button"
+                >
+                  ลองบันทึกใหม่
+                </button>
               ) : null}
             </div>
 
@@ -625,7 +848,7 @@ export function NamingTrainingSessionClient({
                 </p>
               ) : null}
               <button
-                className="inline-flex min-h-[56px] items-center justify-center gap-3 rounded-full bg-white px-7 text-lg font-bold text-[#13756F] shadow-[0_10px_24px_rgba(17,103,99,0.11)] ring-1 ring-[#CDEEEF] transition hover:bg-[#F7FFFF] focus:outline-none focus:ring-4 focus:ring-[#1FA89C]/20 active:scale-[0.98]"
+                className="inline-flex min-h-[48px] items-center justify-center gap-3 rounded-full bg-white px-6 text-base font-bold text-[#13756F] shadow-[0_10px_24px_rgba(17,103,99,0.11)] ring-1 ring-[#CDEEEF] transition hover:bg-[#F7FFFF] focus:outline-none focus:ring-4 focus:ring-[#1FA89C]/20 active:scale-[0.98]"
                 onClick={handleReplayPrompt}
                 type="button"
               >
@@ -636,10 +859,10 @@ export function NamingTrainingSessionClient({
           </section>
         </div>
 
-        <footer className="relative z-20 grid gap-3 lg:absolute lg:bottom-6 lg:left-8 lg:right-8 lg:grid-cols-3 lg:items-center">
+        <footer className="relative z-20 grid gap-3 lg:absolute lg:bottom-5 lg:left-7 lg:right-7 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center">
           <div className="flex justify-center lg:justify-start">
             <button
-              className="inline-flex min-h-[56px] min-w-[170px] items-center justify-center gap-3 rounded-full bg-white px-6 text-lg font-semibold text-[#13756F] shadow-[0_10px_24px_rgba(17,103,99,0.11)] ring-1 ring-[#CDEEEF] transition hover:bg-[#F7FFFF] focus:outline-none focus:ring-4 focus:ring-[#1FA89C]/20 active:scale-[0.98]"
+              className="inline-flex min-h-[52px] min-w-[160px] items-center justify-center gap-3 rounded-full bg-white px-6 text-base font-semibold text-[#13756F] shadow-[0_10px_24px_rgba(17,103,99,0.11)] ring-1 ring-[#CDEEEF] transition hover:bg-[#F7FFFF] focus:outline-none focus:ring-4 focus:ring-[#1FA89C]/20 active:scale-[0.98]"
               onClick={handleRequestHint}
               type="button"
             >
@@ -649,22 +872,22 @@ export function NamingTrainingSessionClient({
           </div>
 
           <div className="flex justify-center">
-            <button
-              className="inline-flex min-h-[56px] min-w-[170px] items-center justify-center gap-3 rounded-full bg-white px-6 text-lg font-semibold text-[#13756F] shadow-[0_10px_24px_rgba(17,103,99,0.11)] ring-1 ring-[#CDEEEF] transition hover:bg-[#F7FFFF] focus:outline-none focus:ring-4 focus:ring-[#1FA89C]/20 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={isSaving}
-              onClick={handleSkipQuestion}
-              type="button"
-            >
-              <SkipIcon className="h-7 w-7" />
-              ข้ามข้อนี้
-            </button>
+            {skippedQuestionIndexes.length > 0 ? (
+              <button
+                className="inline-flex min-h-[52px] items-center justify-center rounded-full bg-white px-6 text-base font-bold text-[#13756F] shadow-[0_10px_24px_rgba(17,103,99,0.11)] ring-1 ring-[#CDEEEF] transition hover:bg-[#F7FFFF] focus:outline-none focus:ring-4 focus:ring-[#1FA89C]/20 active:scale-[0.98]"
+                onClick={handleReviewSkippedQuestion}
+                type="button"
+              >
+                กลับไปข้อที่ข้าม ({skippedQuestionIndexes.length})
+              </button>
+            ) : null}
           </div>
 
           <div className="flex justify-center lg:justify-end">
             <button
-              className="inline-flex min-h-[64px] w-full max-w-[330px] items-center justify-center gap-4 rounded-full bg-[linear-gradient(180deg,#27B5AA_0%,#13958C_100%)] px-9 text-2xl font-bold text-white shadow-[0_14px_30px_rgba(19,149,140,0.23)] transition hover:translate-y-[-1px] focus:outline-none focus:ring-4 focus:ring-[#1FA89C]/25 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55"
-              disabled={!canGoNext || isSaving}
-              onClick={goToNextQuestion}
+              className="inline-flex min-h-[60px] w-full max-w-[330px] items-center justify-center gap-4 rounded-full bg-[linear-gradient(180deg,#27B5AA_0%,#13958C_100%)] px-9 text-xl font-bold text-white shadow-[0_14px_30px_rgba(19,149,140,0.23)] transition hover:translate-y-[-1px] focus:outline-none focus:ring-4 focus:ring-[#1FA89C]/25 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55"
+              disabled={!canAdvanceQuestion || isSaving}
+              onClick={handleAdvanceQuestion}
               type="button"
             >
               <ArrowRightIcon className="h-8 w-8" />
