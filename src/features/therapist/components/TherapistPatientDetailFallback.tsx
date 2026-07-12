@@ -2,7 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { getPatientClinicalOverview } from "../services/therapistClinicalService";
 import { getTherapistPatientDetail } from "../services/therapistDashboardService";
+import type {
+  CategoryScore,
+  ProgressBySession,
+} from "../types/therapistClinical.types";
 import type { TherapistPatientDetail as TherapistPatientDetailData } from "../types/therapist.types";
 import { TherapistPatientDetail } from "./TherapistPatientDetail";
 
@@ -12,6 +17,8 @@ export default function TherapistPatientDetailFallback({
   patientId: string;
 }) {
   const [patient, setPatient] = useState<TherapistPatientDetailData>();
+  const [categoryScores, setCategoryScores] = useState<CategoryScore[]>([]);
+  const [progressBySession, setProgressBySession] = useState<ProgressBySession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -19,7 +26,10 @@ export default function TherapistPatientDetailFallback({
     let isActive = true;
 
     async function loadPatient() {
-      const result = await getTherapistPatientDetail(patientId);
+      const [result, clinicalResult] = await Promise.all([
+        getTherapistPatientDetail(patientId),
+        getPatientClinicalOverview(patientId),
+      ]);
       if (!isActive) {
         return;
       }
@@ -31,6 +41,10 @@ export default function TherapistPatientDetailFallback({
       }
 
       setPatient(result.data);
+      if (clinicalResult.success) {
+        setCategoryScores(clinicalResult.data.categoryScores);
+        setProgressBySession(clinicalResult.data.progressBySession);
+      }
       setIsLoading(false);
     }
 
@@ -69,5 +83,11 @@ export default function TherapistPatientDetailFallback({
     );
   }
 
-  return <TherapistPatientDetail patient={patient} />;
+  return (
+    <TherapistPatientDetail
+      patient={patient}
+      categoryScores={categoryScores}
+      progressBySession={progressBySession}
+    />
+  );
 }

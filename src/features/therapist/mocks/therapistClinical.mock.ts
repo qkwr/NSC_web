@@ -1,7 +1,6 @@
 import type {
   CategoryScore,
   ProgressBySession,
-  ResponseStatusByCategory,
   SessionResultItem,
 } from "../types/therapistClinical.types";
 
@@ -16,13 +15,6 @@ export const mockProgressBySession: ProgressBySession[] = [
   { date: "2026-07-01", spontaneous: 5, comprehension: 6, repetition: 5, naming: 8 },
   { date: "2026-07-02", spontaneous: 6, comprehension: 7, repetition: 6, naming: 10 },
   { date: "2026-07-04", spontaneous: 7, comprehension: 8, repetition: 6, naming: 11 },
-];
-
-export const mockResponseStatusByCategory: ResponseStatusByCategory[] = [
-  { category: "Spontaneous", correct: 7, incorrect: 2, needsPractice: 3, pendingReview: 1 },
-  { category: "Comprehension", correct: 8, incorrect: 1, needsPractice: 2, pendingReview: 1 },
-  { category: "Words repetition", correct: 6, incorrect: 4, needsPractice: 5, pendingReview: 2 },
-  { category: "Naming", correct: 11, incorrect: 4, needsPractice: 6, pendingReview: 2 },
 ];
 
 export const mockSessionResults: SessionResultItem[] = [

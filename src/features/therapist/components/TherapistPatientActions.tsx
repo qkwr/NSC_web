@@ -23,7 +23,7 @@ export default function TherapistPatientActions({ patientId }: { patientId: stri
   }
 
   return (
-    <div className="mt-6 grid gap-3 sm:grid-cols-2">
+    <div className="grid gap-3 sm:grid-cols-2">
       <Link
         href={`/therapist/patients/${patientId}/edit`}
         className="inline-flex min-h-[58px] items-center justify-center rounded-full bg-white px-6 text-center text-lg font-bold text-[#13756F] shadow-[0_10px_24px_rgba(17,103,99,0.1)] ring-1 ring-[#CDEEEF] transition hover:bg-[#F7FFFF]"

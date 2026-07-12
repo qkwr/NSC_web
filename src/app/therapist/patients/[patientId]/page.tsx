@@ -1,6 +1,7 @@
 import { TherapistPatientDetail } from "@/features/therapist/components/TherapistPatientDetail";
 import TherapistPatientDetailFallback from "@/features/therapist/components/TherapistPatientDetailFallback";
 import { mockTherapistPatients } from "@/features/therapist/mocks/therapistDashboard.mock";
+import { getPatientClinicalOverview } from "@/features/therapist/services/therapistClinicalService";
 import { getTherapistPatientDetail } from "@/features/therapist/services/therapistDashboardService";
 
 type PageProps = {
@@ -15,11 +16,24 @@ export function generateStaticParams() {
 
 export default async function TherapistPatientDetailPage({ params }: PageProps) {
   const { patientId } = await params;
-  const result = await getTherapistPatientDetail(patientId);
+  const [result, clinicalResult] = await Promise.all([
+    getTherapistPatientDetail(patientId),
+    getPatientClinicalOverview(patientId),
+  ]);
 
   if (!result.success) {
     return <TherapistPatientDetailFallback patientId={patientId} />;
   }
 
-  return <TherapistPatientDetail patient={result.data} />;
+  if (!clinicalResult.success) {
+    return <TherapistPatientDetailFallback patientId={patientId} />;
+  }
+
+  return (
+    <TherapistPatientDetail
+      patient={result.data}
+      categoryScores={clinicalResult.data.categoryScores}
+      progressBySession={clinicalResult.data.progressBySession}
+    />
+  );
 }

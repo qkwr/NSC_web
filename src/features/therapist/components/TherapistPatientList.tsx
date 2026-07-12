@@ -64,6 +64,22 @@ export default function TherapistPatientList({ patients }: TherapistPatientListP
 
   return (
     <div className="grid gap-4">
+      {visiblePatients.length === 0 ? (
+        <div className="rounded-[30px] bg-white px-7 py-10 text-center shadow-[0_16px_36px_rgba(17,103,99,0.09)] ring-1 ring-[#CDEEEF]">
+          <h2 className="text-2xl font-bold text-[#123232]">
+            ยังไม่มีผู้รับบริการ
+          </h2>
+          <p className="mt-2 text-base font-semibold text-[#557276]">
+            เพิ่มผู้รับบริการใหม่เพื่อเริ่มติดตามผลการฝึกและออกรายงาน
+          </p>
+          <Link
+            href="/therapist/patients/new"
+            className="mt-6 inline-flex min-h-[52px] items-center justify-center rounded-full bg-[#1FA89C] px-7 text-base font-bold text-white shadow-[0_10px_24px_rgba(31,168,156,0.22)] hover:bg-[#178F84]"
+          >
+            เพิ่มผู้รับบริการใหม่
+          </Link>
+        </div>
+      ) : null}
       {visiblePatients.map((patient) => (
         <div
           key={patient.id}
