@@ -2,6 +2,7 @@ import type { PatientProgressSummary } from "../utils/patientProgress";
 import { formatDisplayDate, formatPercent } from "../utils/patientProgress";
 
 type PatientProgressSummaryCardsProps = {
+  layout?: "row" | "stack";
   summary: PatientProgressSummary;
 };
 
@@ -19,7 +20,7 @@ function SummaryCard({
       <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#12847D]">
         {label}
       </p>
-      <p className="mt-1 text-[clamp(1.35rem,2vw,1.8rem)] font-bold leading-tight text-[#123232]">
+      <p className="mt-1 text-[clamp(1.35rem,1.8vw,1.75rem)] font-bold leading-tight text-[#123232]">
         {value}
       </p>
       {detail ? (
@@ -31,10 +32,17 @@ function SummaryCard({
   );
 }
 export function PatientProgressSummaryCards({
+  layout = "row",
   summary,
 }: PatientProgressSummaryCardsProps) {
   return (
-    <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+    <section
+      className={`grid gap-3 ${
+        layout === "stack"
+          ? "sm:grid-cols-2 xl:grid-cols-1"
+          : "sm:grid-cols-2 xl:grid-cols-4"
+      }`}
+    >
       <SummaryCard
         label="จำนวนครั้งที่ฝึก"
         value={summary.sessionCount > 0 ? summary.sessionCount : "—"}

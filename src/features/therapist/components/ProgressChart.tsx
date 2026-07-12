@@ -14,9 +14,9 @@ type ProgressChartProps = {
   points: PatientProgressPoint[];
 };
 
-const chartWidth = 760;
-const chartHeight = 320;
-const padding = { top: 24, right: 30, bottom: 58, left: 54 };
+const chartWidth = 920;
+const chartHeight = 440;
+const padding = { top: 28, right: 36, bottom: 70, left: 64 };
 const plotWidth = chartWidth - padding.left - padding.right;
 const plotHeight = chartHeight - padding.top - padding.bottom;
 const yTicks = [0, 25, 50, 75, 100];
@@ -61,7 +61,7 @@ export function ProgressChart({ categoryKey, points }: ProgressChartProps) {
 
   if (validPoints.length === 0) {
     return (
-      <article className="flex h-full min-h-[300px] flex-col rounded-[24px] bg-white p-5 shadow-sm ring-1 ring-[#CDEEEF]">
+      <article className="flex min-h-[480px] self-start flex-col rounded-[24px] bg-white p-5 shadow-sm ring-1 ring-[#CDEEEF]">
         <div>
           <h2 className="text-xl font-bold">
             พัฒนาการตั้งแต่เริ่มฝึกจนถึงปัจจุบัน
@@ -81,7 +81,7 @@ export function ProgressChart({ categoryKey, points }: ProgressChartProps) {
   }
 
   return (
-    <article className="relative flex h-full min-h-[300px] flex-col rounded-[24px] bg-white p-5 shadow-sm ring-1 ring-[#CDEEEF]">
+    <article className="relative flex min-h-[520px] self-start flex-col rounded-[24px] bg-white p-5 shadow-sm ring-1 ring-[#CDEEEF]">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="text-xl font-bold">
@@ -98,9 +98,9 @@ export function ProgressChart({ categoryKey, points }: ProgressChartProps) {
         </p>
       </div>
 
-      <div className="relative mt-3 min-h-0 flex-1 rounded-[22px] bg-[#F8FEFF] p-2 ring-1 ring-[#D7EFF0]">
+      <div className="relative mt-4 min-h-[390px] flex-1 rounded-[22px] bg-[#F8FEFF] p-3 ring-1 ring-[#D7EFF0]">
         <svg
-          className="h-full min-h-[230px] w-full"
+          className="h-full min-h-[370px] w-full"
           viewBox={`0 0 ${chartWidth} ${chartHeight}`}
           role="img"
           aria-label="พัฒนาการตั้งแต่เริ่มฝึกจนถึงปัจจุบัน"
@@ -247,7 +247,7 @@ export function ProgressChart({ categoryKey, points }: ProgressChartProps) {
 
         {activePoint && activeX !== undefined && activeY !== undefined ? (
           <div
-            className="pointer-events-none absolute z-10 w-[220px] -translate-x-1/2 rounded-[18px] bg-[#123232] px-4 py-3 text-sm font-semibold leading-6 text-white shadow-[0_18px_36px_rgba(18,50,50,0.18)]"
+            className="pointer-events-none absolute z-10 w-[240px] -translate-x-1/2 rounded-[18px] bg-[#123232] px-4 py-3 text-sm font-semibold leading-6 text-white shadow-[0_18px_36px_rgba(18,50,50,0.18)]"
             style={{
               left: `${(activeX / chartWidth) * 100}%`,
               top: `${Math.max(4, (activeY / chartHeight) * 100 - 2)}%`,

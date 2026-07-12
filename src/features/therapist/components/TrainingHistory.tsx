@@ -29,7 +29,7 @@ export function TrainingHistory({ points }: TrainingHistoryProps) {
           ยังไม่มีประวัติการฝึกในช่วงเวลาหรือหมวดที่เลือก
         </div>
       ) : (
-        <div className="mt-4 max-h-[260px] overflow-y-auto pr-1 lg:max-h-[min(28vh,250px)]">
+        <div className="mt-4 max-h-[360px] overflow-y-auto pr-1">
           <div className="hidden min-w-[560px] grid-cols-[88px_1fr_120px_96px] gap-3 border-b border-[#D7EFF0] pb-2 text-xs font-bold uppercase tracking-[0.08em] text-[#557276] sm:grid">
             <span>ครั้งที่</span>
             <span>วันที่ / หมวด</span>

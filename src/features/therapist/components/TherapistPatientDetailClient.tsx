@@ -22,6 +22,11 @@ import {
 
 type ActiveWorkspaceTab = "overview" | "report";
 
+const workspaceTabs: Array<{ key: ActiveWorkspaceTab; label: string }> = [
+  { key: "overview", label: "ภาพรวม" },
+  { key: "report", label: "รายงาน" },
+];
+
 export default function TherapistPatientDetailClient({
   patient,
   categoryScores,
@@ -50,24 +55,22 @@ export default function TherapistPatientDetailClient({
     () => getProgressInsights({ aggregates, filters, points }),
     [aggregates, filters, points],
   );
+
   return (
-    <section className="mt-4 flex min-h-0 flex-1 flex-col gap-4">
-      <div className="no-print flex flex-col gap-3 rounded-[26px] bg-white p-3 shadow-sm ring-1 ring-[#CDEEEF] xl:flex-row xl:items-center xl:justify-between">
+    <section className="mt-4 flex flex-col gap-4">
+      <div className="no-print grid gap-3 rounded-[24px] bg-white p-3 shadow-sm ring-1 ring-[#CDEEEF] xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
         <ProgressFilters value={filters} onChange={setFilters} />
-        <div className="flex shrink-0 rounded-full bg-[#F2FBFB] p-1 ring-1 ring-[#CDEEEF]">
-          {[
-            { key: "overview", label: "ภาพรวม" },
-            { key: "report", label: "รายงาน" },
-          ].map((tab) => (
+        <div className="flex w-full rounded-full bg-[#F2FBFB] p-1 ring-1 ring-[#CDEEEF] sm:w-fit">
+          {workspaceTabs.map((tab) => (
             <button
               key={tab.key}
               type="button"
-              className={`min-h-[38px] rounded-full px-5 text-sm font-bold transition ${
+              className={`min-h-[40px] flex-1 rounded-full px-5 text-sm font-bold transition sm:flex-none ${
                 activeTab === tab.key
                   ? "bg-[#1FA89C] text-white shadow-sm"
                   : "text-[#13756F] hover:bg-white"
               }`}
-              onClick={() => setActiveTab(tab.key as ActiveWorkspaceTab)}
+              onClick={() => setActiveTab(tab.key)}
             >
               {tab.label}
             </button>
@@ -75,30 +78,38 @@ export default function TherapistPatientDetailClient({
         </div>
       </div>
 
-      <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[220px_minmax(0,1fr)_300px] xl:grid-cols-[240px_minmax(0,1fr)_320px]">
-        <aside className="min-h-0 overflow-y-auto rounded-[26px] bg-[#F8FEFF] p-3 ring-1 ring-[#D7EFF0] lg:overflow-visible">
-          <PatientProgressSummaryCards summary={summary} />
-        </aside>
-
-        <div className="min-h-0">
-          {activeTab === "overview" ? (
+      {activeTab === "overview" ? (
+        <>
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,2.2fr)_minmax(320px,0.8fr)]">
             <ProgressChart categoryKey={filters.categoryKey} points={points} />
-          ) : (
-            <ReportPreview
-              filters={filters}
-              insights={insights}
-              patient={patient}
-              points={points}
-              summary={summary}
-            />
-          )}
-        </div>
-
-        <aside className="grid min-h-0 gap-4 lg:grid-rows-[minmax(0,1fr)_minmax(190px,0.82fr)]">
-          <ProgressInsights insights={insights} />
+            <aside className="grid min-w-0 content-start gap-4">
+              <PatientProgressSummaryCards layout="stack" summary={summary} />
+              <ProgressInsights insights={insights} />
+            </aside>
+          </div>
           <TrainingHistory points={points} />
-        </aside>
-      </div>
+        </>
+      ) : (
+        <>
+          <PatientProgressSummaryCards summary={summary} />
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.65fr)_minmax(320px,0.75fr)]">
+            <div className="grid min-w-0 gap-4">
+              <ProgressChart categoryKey={filters.categoryKey} points={points} />
+              <ReportPreview
+                filters={filters}
+                insights={insights}
+                patient={patient}
+                points={points}
+                summary={summary}
+              />
+            </div>
+            <aside className="grid min-w-0 content-start gap-4 xl:sticky xl:top-4">
+              <ProgressInsights insights={insights} />
+              <TrainingHistory points={points} />
+            </aside>
+          </div>
+        </>
+      )}
     </section>
   );
 }

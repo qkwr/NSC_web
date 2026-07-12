@@ -84,9 +84,9 @@ export function TherapistPatientDetail({
   }
 
   return (
-    <main className="min-h-dvh bg-[linear-gradient(180deg,#F6FEFF_0%,#EAF9FB_58%,#DFF3F5_100%)] px-4 py-4 text-[#123232] sm:px-6 lg:h-[calc(100dvh-2rem)] lg:min-h-0 lg:overflow-hidden">
-      <div className="mx-auto flex h-full min-h-0 w-full max-w-[1280px] flex-col">
-        <section className="rounded-[28px] bg-white px-5 py-4 shadow-[0_18px_48px_rgba(17,103,99,0.1)] ring-1 ring-[#CDEEEF] sm:px-6">
+    <main className="min-h-dvh bg-[linear-gradient(180deg,#F6FEFF_0%,#EAF9FB_58%,#DFF3F5_100%)] px-3 py-3 text-[#123232] sm:px-5">
+      <div className="mx-auto flex w-full max-w-[1500px] flex-col">
+        <section className="rounded-[24px] bg-white px-5 py-4 shadow-[0_14px_36px_rgba(17,103,99,0.08)] ring-1 ring-[#CDEEEF] sm:px-6">
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
@@ -104,7 +104,7 @@ export function TherapistPatientDetail({
                   {copyStatus || `Patient Code ${profile.patientCode}`}
                 </button>
               </div>
-              <h1 className="mt-3 truncate text-[clamp(1.75rem,2.7vw,2.45rem)] font-bold leading-tight">
+              <h1 className="mt-3 text-[clamp(1.75rem,2.7vw,2.45rem)] font-bold leading-tight">
                 {profile.fullName}
               </h1>
               <p className="mt-1 text-sm font-semibold text-[#557276]">

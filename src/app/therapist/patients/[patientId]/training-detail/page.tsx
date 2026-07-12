@@ -62,15 +62,15 @@ export default async function TherapistPatientTrainingDetailPage({
   const { categoryScores, progressBySession } = clinicalResult.data;
 
   return (
-    <main className="print-report-page min-h-dvh bg-[linear-gradient(180deg,#F6FEFF_0%,#EAF9FB_58%,#DFF3F5_100%)] px-4 py-4 text-[#123232] sm:px-6 lg:h-[calc(100dvh-2rem)] lg:min-h-0 lg:overflow-hidden">
-      <div className="print-report-container mx-auto flex h-full min-h-0 w-full max-w-[1280px] flex-col">
-        <section className="print-card rounded-[28px] bg-white px-5 py-4 shadow-[0_18px_48px_rgba(17,103,99,0.1)] ring-1 ring-[#CDEEEF] sm:px-6">
+    <main className="print-report-page min-h-dvh bg-[linear-gradient(180deg,#F6FEFF_0%,#EAF9FB_58%,#DFF3F5_100%)] px-3 py-3 text-[#123232] sm:px-5">
+      <div className="print-report-container mx-auto flex w-full max-w-[1500px] flex-col">
+        <section className="print-card rounded-[24px] bg-white px-5 py-4 shadow-[0_14px_36px_rgba(17,103,99,0.08)] ring-1 ring-[#CDEEEF] sm:px-6">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0">
               <p className="inline-flex min-h-[32px] items-center rounded-full bg-[#F2FBFB] px-4 text-xs font-bold text-[#12847D] ring-1 ring-[#CDEEEF]">
                 Patient Code {patient.code}
               </p>
-              <h1 className="mt-2 truncate text-[clamp(1.7rem,2.6vw,2.35rem)] font-bold leading-tight">
+              <h1 className="mt-2 text-[clamp(1.7rem,2.6vw,2.35rem)] font-bold leading-tight">
                 รายละเอียดการฝึกของ {patient.name}
               </h1>
               <p className="mt-1 text-sm font-semibold text-[#557276]">
