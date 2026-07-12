@@ -57,10 +57,10 @@ export default function TherapistPatientDetailClient({
   );
 
   return (
-    <section className="mt-4 flex flex-col gap-4">
-      <div className="no-print grid gap-3 rounded-[24px] bg-white p-3 shadow-sm ring-1 ring-[#CDEEEF] xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
+    <section className="mt-4 flex min-w-0 flex-col gap-4">
+      <div className="no-print grid min-w-0 gap-3 overflow-hidden rounded-[24px] bg-white p-3 shadow-sm ring-1 ring-[#CDEEEF] xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
         <ProgressFilters value={filters} onChange={setFilters} />
-        <div className="flex w-full rounded-full bg-[#F2FBFB] p-1 ring-1 ring-[#CDEEEF] sm:w-fit">
+        <div className="flex w-full min-w-0 rounded-full bg-[#F2FBFB] p-1 ring-1 ring-[#CDEEEF] sm:w-fit">
           {workspaceTabs.map((tab) => (
             <button
               key={tab.key}
@@ -80,7 +80,7 @@ export default function TherapistPatientDetailClient({
 
       {activeTab === "overview" ? (
         <>
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,2.2fr)_minmax(320px,0.8fr)]">
+          <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,2.2fr)_minmax(300px,0.8fr)]">
             <ProgressChart categoryKey={filters.categoryKey} points={points} />
             <aside className="grid min-w-0 content-start gap-4">
               <PatientProgressSummaryCards layout="stack" summary={summary} />
@@ -92,7 +92,7 @@ export default function TherapistPatientDetailClient({
       ) : (
         <>
           <PatientProgressSummaryCards summary={summary} />
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.65fr)_minmax(320px,0.75fr)]">
+          <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.65fr)_minmax(300px,0.75fr)]">
             <div className="grid min-w-0 gap-4">
               <ProgressChart categoryKey={filters.categoryKey} points={points} />
               <ReportPreview

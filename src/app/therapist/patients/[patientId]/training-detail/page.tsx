@@ -62,10 +62,10 @@ export default async function TherapistPatientTrainingDetailPage({
   const { categoryScores, progressBySession } = clinicalResult.data;
 
   return (
-    <main className="print-report-page min-h-dvh bg-[linear-gradient(180deg,#F6FEFF_0%,#EAF9FB_58%,#DFF3F5_100%)] px-3 py-3 text-[#123232] sm:px-5">
-      <div className="print-report-container mx-auto flex w-full max-w-[1500px] flex-col">
-        <section className="print-card rounded-[24px] bg-white px-5 py-4 shadow-[0_14px_36px_rgba(17,103,99,0.08)] ring-1 ring-[#CDEEEF] sm:px-6">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+    <main className="print-report-page min-h-dvh overflow-x-clip bg-[linear-gradient(180deg,#F6FEFF_0%,#EAF9FB_58%,#DFF3F5_100%)] px-3 py-3 text-[#123232] sm:px-5">
+      <div className="print-report-container mx-auto flex w-full max-w-[1500px] min-w-0 flex-col">
+        <section className="print-card min-w-0 rounded-[24px] bg-white px-5 py-4 shadow-[0_14px_36px_rgba(17,103,99,0.08)] ring-1 ring-[#CDEEEF] sm:px-6">
+          <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0">
               <p className="inline-flex min-h-[32px] items-center rounded-full bg-[#F2FBFB] px-4 text-xs font-bold text-[#12847D] ring-1 ring-[#CDEEEF]">
                 Patient Code {patient.code}

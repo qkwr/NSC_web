@@ -104,9 +104,9 @@ export function ReportPreview(props: ReportPreviewProps) {
   }
 
   return (
-    <section className="print-card rounded-[24px] bg-white p-5 shadow-sm ring-1 ring-[#CDEEEF]">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
+    <section className="print-card min-w-0 overflow-hidden rounded-[24px] bg-white p-5 shadow-sm ring-1 ring-[#CDEEEF]">
+      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
           <p className="inline-flex rounded-full bg-[#F2FBFB] px-4 py-2 text-xs font-bold uppercase tracking-[0.08em] text-[#12847D] ring-1 ring-[#CDEEEF]">
             PoodPlearn report
           </p>
@@ -115,7 +115,7 @@ export function ReportPreview(props: ReportPreviewProps) {
             Print และ Save as PDF ใช้ข้อมูลตาม Filter ปัจจุบัน
           </p>
         </div>
-        <div className="no-print flex flex-wrap gap-2">
+        <div className="no-print flex min-w-0 flex-wrap gap-2">
           <button
             type="button"
             className="min-h-[42px] rounded-full bg-white px-4 text-sm font-bold text-[#13756F] ring-1 ring-[#CDEEEF] hover:bg-[#F7FFFF]"
@@ -133,7 +133,7 @@ export function ReportPreview(props: ReportPreviewProps) {
         </div>
       </div>
 
-      <div className="mt-4 grid gap-3 rounded-[20px] bg-[#F8FEFF] p-4 text-sm font-semibold leading-6 text-[#45686A] ring-1 ring-[#D7EFF0] sm:grid-cols-2">
+      <div className="mt-4 grid min-w-0 gap-3 rounded-[20px] bg-[#F8FEFF] p-4 text-sm font-semibold leading-6 text-[#45686A] ring-1 ring-[#D7EFF0] sm:grid-cols-2">
         <p>ผู้รับบริการ: {props.patient.name}</p>
         <p>รหัส: {props.patient.code}</p>
         <p>ช่วงเวลา: {getProgressTimeRangeLabel(props.filters.timeRangeKey)}</p>
@@ -154,8 +154,8 @@ export function ReportPreview(props: ReportPreviewProps) {
       </div>
 
       <pre className="print-report-text mt-4">{reportText}</pre>
-      <div className="no-print mt-4 max-h-[260px] overflow-y-auto rounded-[18px] bg-[#F8FEFF] p-4 text-sm font-semibold leading-6 text-[#123232] ring-1 ring-[#D7EFF0]">
-        <pre className="whitespace-pre-wrap font-[inherit]">{reportText}</pre>
+      <div className="no-print mt-4 max-h-[260px] min-w-0 overflow-y-auto rounded-[18px] bg-[#F8FEFF] p-4 text-sm font-semibold leading-6 text-[#123232] ring-1 ring-[#D7EFF0]">
+        <pre className="whitespace-pre-wrap break-words font-[inherit]">{reportText}</pre>
       </div>
     </section>
   );

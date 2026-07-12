@@ -84,10 +84,10 @@ export function TherapistPatientDetail({
   }
 
   return (
-    <main className="min-h-dvh bg-[linear-gradient(180deg,#F6FEFF_0%,#EAF9FB_58%,#DFF3F5_100%)] px-3 py-3 text-[#123232] sm:px-5">
-      <div className="mx-auto flex w-full max-w-[1500px] flex-col">
-        <section className="rounded-[24px] bg-white px-5 py-4 shadow-[0_14px_36px_rgba(17,103,99,0.08)] ring-1 ring-[#CDEEEF] sm:px-6">
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start">
+    <main className="min-h-dvh overflow-x-clip bg-[linear-gradient(180deg,#F6FEFF_0%,#EAF9FB_58%,#DFF3F5_100%)] px-3 py-3 text-[#123232] sm:px-5">
+      <div className="mx-auto flex w-full max-w-[1500px] min-w-0 flex-col">
+        <section className="min-w-0 rounded-[24px] bg-white px-5 py-4 shadow-[0_14px_36px_rgba(17,103,99,0.08)] ring-1 ring-[#CDEEEF] sm:px-6">
+          <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <Link

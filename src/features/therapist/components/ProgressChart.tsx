@@ -61,7 +61,7 @@ export function ProgressChart({ categoryKey, points }: ProgressChartProps) {
 
   if (validPoints.length === 0) {
     return (
-      <article className="flex min-h-[480px] self-start flex-col rounded-[24px] bg-white p-5 shadow-sm ring-1 ring-[#CDEEEF]">
+      <article className="flex min-h-[480px] min-w-0 self-start flex-col rounded-[24px] bg-white p-5 shadow-sm ring-1 ring-[#CDEEEF]">
         <div>
           <h2 className="text-xl font-bold">
             พัฒนาการตั้งแต่เริ่มฝึกจนถึงปัจจุบัน
@@ -81,7 +81,7 @@ export function ProgressChart({ categoryKey, points }: ProgressChartProps) {
   }
 
   return (
-    <article className="relative flex min-h-[520px] self-start flex-col rounded-[24px] bg-white p-5 shadow-sm ring-1 ring-[#CDEEEF]">
+    <article className="relative flex min-h-[520px] min-w-0 self-start flex-col rounded-[24px] bg-white p-5 shadow-sm ring-1 ring-[#CDEEEF]">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="text-xl font-bold">
@@ -98,7 +98,7 @@ export function ProgressChart({ categoryKey, points }: ProgressChartProps) {
         </p>
       </div>
 
-      <div className="relative mt-4 min-h-[390px] flex-1 rounded-[22px] bg-[#F8FEFF] p-3 ring-1 ring-[#D7EFF0]">
+      <div className="relative mt-4 min-h-[390px] min-w-0 flex-1 rounded-[22px] bg-[#F8FEFF] p-3 ring-1 ring-[#D7EFF0]">
         <svg
           className="h-full min-h-[370px] w-full"
           viewBox={`0 0 ${chartWidth} ${chartHeight}`}

@@ -11,7 +11,7 @@ export function TrainingHistory({ points }: TrainingHistoryProps) {
   const sortedPoints = [...points].reverse();
 
   return (
-    <section className="rounded-[24px] bg-white p-5 shadow-sm ring-1 ring-[#CDEEEF]">
+    <section className="min-w-0 overflow-hidden rounded-[24px] bg-white p-5 shadow-sm ring-1 ring-[#CDEEEF]">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-xl font-bold">ประวัติการฝึก</h2>
@@ -29,7 +29,7 @@ export function TrainingHistory({ points }: TrainingHistoryProps) {
           ยังไม่มีประวัติการฝึกในช่วงเวลาหรือหมวดที่เลือก
         </div>
       ) : (
-        <div className="mt-4 max-h-[360px] overflow-y-auto pr-1">
+        <div className="mt-4 max-h-[360px] overflow-auto pr-1">
           <div className="hidden min-w-[560px] grid-cols-[88px_1fr_120px_96px] gap-3 border-b border-[#D7EFF0] pb-2 text-xs font-bold uppercase tracking-[0.08em] text-[#557276] sm:grid">
             <span>ครั้งที่</span>
             <span>วันที่ / หมวด</span>
