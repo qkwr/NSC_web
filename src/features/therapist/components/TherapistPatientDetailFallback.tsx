@@ -4,11 +4,11 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getPatientClinicalOverview } from "../services/therapistClinicalService";
 import { getTherapistPatientDetail } from "../services/therapistDashboardService";
+import type { TherapistPatientDetail as TherapistPatientDetailData } from "../types/therapist.types";
 import type {
   CategoryScore,
   ProgressBySession,
 } from "../types/therapistClinical.types";
-import type { TherapistPatientDetail as TherapistPatientDetailData } from "../types/therapist.types";
 import { TherapistPatientDetail } from "./TherapistPatientDetail";
 
 export default function TherapistPatientDetailFallback({
@@ -26,25 +26,24 @@ export default function TherapistPatientDetailFallback({
     let isActive = true;
 
     async function loadPatient() {
-      const [result, clinicalResult] = await Promise.all([
+      const [patientResult, clinicalResult] = await Promise.all([
         getTherapistPatientDetail(patientId),
         getPatientClinicalOverview(patientId),
       ]);
+
       if (!isActive) {
         return;
       }
 
-      if (!result.success) {
-        setErrorMessage(result.errorMessage);
+      if (!patientResult.success) {
+        setErrorMessage(patientResult.errorMessage);
         setIsLoading(false);
         return;
       }
 
-      setPatient(result.data);
-      if (clinicalResult.success) {
-        setCategoryScores(clinicalResult.data.categoryScores);
-        setProgressBySession(clinicalResult.data.progressBySession);
-      }
+      setPatient(patientResult.data);
+      setCategoryScores(clinicalResult.success ? clinicalResult.data.categoryScores : []);
+      setProgressBySession(clinicalResult.success ? clinicalResult.data.progressBySession : []);
       setIsLoading(false);
     }
 

@@ -2,8 +2,9 @@ export type NamingInternalLevel = "easy" | "medium" | "hard";
 
 export type NamingHint = {
   level: 1 | 2 | 3;
-  type: "category" | "feature" | "initial_sound";
+  type: "answer" | "feature" | "initial_sound";
   text: string;
+  audioSrc?: string | null;
 };
 
 export type NamingQuestion = {
@@ -12,18 +13,19 @@ export type NamingQuestion = {
   categoryId: "animals";
   categoryName: "สัตว์";
   internalLevel: NamingInternalLevel;
-  setId: "set-1" | "set-2" | "set-3";
+  setId: string;
   order: number;
   label: string;
   promptText: "ภาพนี้คืออะไร";
   answer: string;
   acceptableAnswers: string[];
   imageSrc?: string;
+  questionAudioSrc?: string;
   hints: NamingHint[];
 };
 
 export type NamingSet = {
-  id: "set-1" | "set-2" | "set-3";
+  id: string;
   moduleId: "PN002";
   categoryId: "animals";
   categoryName: "สัตว์";
@@ -69,12 +71,13 @@ export type NamingResponse = {
   questionId: string;
   setId: NamingSet["id"];
   answerType: "mock_audio" | "skipped";
-  mockAnswer?: string;
   isCorrect?: boolean;
   skipped?: boolean;
   hintLevelUsed: 0 | 1 | 2 | 3;
   responseTimeMs: number;
   submittedAt: string;
+  answerText?: string;
+  voiceFile?: Blob;
 };
 
 export type NamingSessionSummary = {

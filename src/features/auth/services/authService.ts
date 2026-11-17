@@ -1,30 +1,29 @@
-import {
-  getPatientByPatientCode,
-  normalizePatientCode,
-  validatePatientCodeFormat,
-} from "@/features/therapist/services/therapistDashboardService";
 import type { AuthRole, LoginResult } from "../types/auth.types";
 
 const INVALID_ACCESS_CODE_MESSAGE =
-  "ไม่พบรหัสเข้าใช้งาน กรุณาตรวจสอบรหัสอีกครั้ง";
-const INVALID_THERAPIST_CODE_MESSAGE = "รหัสนักแก้ไขการพูดไม่ถูกต้อง";
-const THERAPIST_CODE = "TH001";
+  "ไม่พบรหัสเข้าใช้งาน กรุณาตรวจสอบอีกครั้ง";
 
 const redirectPathByRole: Record<AuthRole, string> = {
   patient: "/patient/home",
   therapist: "/therapist/dashboard",
 };
 
-export function validateTherapistCode(code: string) {
-  return normalizePatientCode(code) === THERAPIST_CODE;
+type LoginApiResponse = {
+  userId: number;
+  account: string;
+  role: string;
+  patientId?: number | null;
+  therapistId?: number | null;
+};
+
+function normalizeRole(role: string): AuthRole {
+  return role.toLowerCase() === "therapist" ? "therapist" : "patient";
 }
 
 export async function loginWithAccessCode(
   accessCode: string,
 ): Promise<LoginResult> {
-  await new Promise((resolve) => setTimeout(resolve, 350));
-
-  const normalizedCode = normalizePatientCode(accessCode);
+  const normalizedCode = accessCode.trim();
 
   if (!normalizedCode) {
     return {
@@ -33,52 +32,45 @@ export async function loginWithAccessCode(
     };
   }
 
-  if (validateTherapistCode(normalizedCode)) {
-    return {
-      success: true,
-      role: "therapist",
-      user: {
-        id: "therapist-001",
-        accessCode: THERAPIST_CODE,
-        role: "therapist",
-        displayName: "Therapist 001",
-      },
-      redirectPath: redirectPathByRole.therapist,
-    };
-  }
+  const response = await fetch("/api/v1/auth/login", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      account: normalizedCode,
+      password: normalizedCode,
+    }),
+  });
 
-  if (normalizedCode.startsWith("TH")) {
-    return {
-      success: false,
-      errorMessage: INVALID_THERAPIST_CODE_MESSAGE,
-    };
-  }
+  const data = (await response.json().catch(() => null)) as
+    | LoginApiResponse
+    | { error?: string }
+    | null;
 
-  if (!validatePatientCodeFormat(normalizedCode)) {
+  if (!response.ok || !data || "error" in data) {
     return {
       success: false,
-      errorMessage: INVALID_ACCESS_CODE_MESSAGE,
+      errorMessage: data && "error" in data && data.error
+        ? data.error
+        : INVALID_ACCESS_CODE_MESSAGE,
     };
   }
+  const successData = data as LoginApiResponse;
 
-  const patientResult = await getPatientByPatientCode(normalizedCode);
-
-  if (!patientResult.success) {
-    return {
-      success: false,
-      errorMessage: INVALID_ACCESS_CODE_MESSAGE,
-    };
-  }
+  const role = normalizeRole(successData.role);
 
   return {
     success: true,
-    role: "patient",
+    role,
     user: {
-      id: patientResult.data.id,
-      accessCode: normalizedCode,
-      role: "patient",
-      displayName: patientResult.data.name,
+      id: successData.userId,
+      accessCode: successData.account,
+      role,
+      displayName: successData.account,
+      patientId: successData.patientId ?? null,
+      therapistId: successData.therapistId ?? null,
     },
-    redirectPath: redirectPathByRole.patient,
+    redirectPath: redirectPathByRole[role],
   };
 }

@@ -1,6 +1,5 @@
 import { TherapistPatientDetail } from "@/features/therapist/components/TherapistPatientDetail";
 import TherapistPatientDetailFallback from "@/features/therapist/components/TherapistPatientDetailFallback";
-import { mockTherapistPatients } from "@/features/therapist/mocks/therapistDashboard.mock";
 import { getPatientClinicalOverview } from "@/features/therapist/services/therapistClinicalService";
 import { getTherapistPatientDetail } from "@/features/therapist/services/therapistDashboardService";
 
@@ -9,10 +8,6 @@ type PageProps = {
     patientId: string;
   }>;
 };
-
-export function generateStaticParams() {
-  return mockTherapistPatients.map((patient) => ({ patientId: patient.id }));
-}
 
 export default async function TherapistPatientDetailPage({ params }: PageProps) {
   const { patientId } = await params;

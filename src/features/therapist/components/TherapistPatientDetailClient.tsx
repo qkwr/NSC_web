@@ -84,7 +84,6 @@ export default function TherapistPatientDetailClient({
             <ProgressChart categoryKey={filters.categoryKey} points={points} />
             <aside className="grid min-w-0 content-start gap-4">
               <PatientProgressSummaryCards layout="stack" summary={summary} />
-              <ProgressInsights insights={insights} />
             </aside>
           </div>
           <TrainingHistory points={points} />
@@ -95,19 +94,21 @@ export default function TherapistPatientDetailClient({
           <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.65fr)_minmax(300px,0.75fr)]">
             <div className="grid min-w-0 gap-4">
               <ProgressChart categoryKey={filters.categoryKey} points={points} />
-              <ReportPreview
-                filters={filters}
-                insights={insights}
-                patient={patient}
-                points={points}
-                summary={summary}
-              />
+              
             </div>
             <aside className="grid min-w-0 content-start gap-4 xl:sticky xl:top-4">
               <ProgressInsights insights={insights} />
-              <TrainingHistory points={points} />
+
             </aside>
           </div>
+          <ReportPreview
+            filters={filters}
+            insights={insights}
+            patient={patient}
+            points={points}
+            summary={summary}
+          />
+
         </>
       )}
     </section>

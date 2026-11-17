@@ -1,62 +1,66 @@
-import { getPatientByPatientCode } from "@/features/therapist/services/therapistDashboardService";
-import type { PatientHomeData, PatientHomeResult } from "../types/patientHome.types";
+import type {
+	PatientHomeResult,
+	PatientHomeState
+} from "../types/patientHome.types";
 
-function getDisplayFirstName(fullName: string) {
-  return fullName.trim().split(/\s+/)[0] || fullName;
-}
-
-function createPatientHomeData(patientCode: string, patient: {
-  id: string;
-  name: string;
-  pn001ProgressPercent: number;
-  pn002ProgressPercent: number;
-}): PatientHomeData {
-  const needsAssessment = patient.pn001ProgressPercent < 100;
-
-  return {
-    patient: {
-      id: patient.id,
-      code: patientCode,
-      name: getDisplayFirstName(patient.name),
-    },
-    nextAction: needsAssessment
-      ? {
-          type: "needs_standard_assessment",
-          eyebrow: "แบบทดสอบก่อนใช้งาน",
-          title: "ทำแบบทดสอบก่อนใช้งาน",
-          description:
-            "เริ่มต้นด้วยแบบทดสอบก่อนใช้งาน เพื่อให้ระบบวางแผนการฝึกที่เหมาะกับคุณ",
-          progressPercent: patient.pn001ProgressPercent,
-          buttonText: "เริ่มทำแบบทดสอบก่อนใช้งาน",
-          targetPath: "/patient/assessment/start",
-        }
-      : {
-          type: "has_daily_training_plan",
-          eyebrow: "แบบฝึกวันนี้",
-          title: "ฝึกเรียกชื่อภาพ",
-          description:
-            "ระบบเลือกแบบฝึกให้จากผลการประเมินที่ผ่านมา",
-          progressPercent: patient.pn002ProgressPercent,
-          buttonText: "เริ่มฝึกวันนี้",
-          targetPath: "/patient/training/today",
-        },
-  };
-}
+type PatientHomeApiResponse = {
+	patient: {
+		code: string | number;
+		name: string;
+	};
+	nextAction: {
+		type: PatientHomeState;
+		targetPath: string;
+	};
+	weekStreak: Array<{
+		label: string;
+		score: number | null;
+		isToday?: boolean;
+	}>;
+};
 
 export async function getPatientHomeData(
-  patientCode: string,
+  userId: number,
 ): Promise<PatientHomeResult> {
-  const result = await getPatientByPatientCode(patientCode);
+  
+  const response = await fetch(`/api/v1/patients/home?userId=${userId}`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    cache: "no-store",
+  });
 
-  if (!result.success) {
+  const data = (await response.json().catch(() => null)) as
+    | PatientHomeApiResponse
+    | { error?: string }
+    | null;
+
+  if (!response.ok || !data || "error" in data) {
     return {
       success: false,
-      errorMessage: "ไม่พบข้อมูลผู้รับบริการ",
+      errorMessage:
+        data && typeof data === "object" && "error" in data && data.error
+          ? data.error
+          : "ไม่สามารถโหลดข้อมูลผู้รับบริการได้",
     };
   }
 
+  const payload = data as PatientHomeApiResponse;
+
   return {
     success: true,
-    data: createPatientHomeData(patientCode.trim().toUpperCase(), result.data),
+    data: {
+      patient: {
+        id: String(payload.patient.code),
+        code: String(payload.patient.code),
+        name: payload.patient.name,
+      },
+      nextAction: {
+        type: payload.nextAction.type,
+        targetPath: payload.nextAction.targetPath,
+      },
+      weekStreak: payload.weekStreak ?? [],
+    },
   };
 }

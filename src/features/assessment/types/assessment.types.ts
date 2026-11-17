@@ -18,18 +18,18 @@ export type QuestionChoice = {
   label: string;
   imageSrc?: string;
   imageUrl?: string;
-  isCorrect: boolean;
+  isCorrect?: boolean;
 };
 
 export type AssessmentHint = {
   level: 1 | 2 | 3;
   type:
-    | "repeat_question"
-    | "feature"
-    | "initial_sound"
-    | "slow_repetition"
-    | "normal_repetition"
-    | "answer";
+  | "repeat_question"
+  | "feature"
+  | "initial_sound"
+  | "slow_repetition"
+  | "normal_repetition"
+  | "answer";
   text: string;
 };
 
@@ -43,6 +43,7 @@ export type StandardAssessmentQuestion = {
   expectedAnswer?: string;
   imageSrc?: string;
   imageUrl?: string;
+  questionAudioSrc?: string;
   choices?: QuestionChoice[];
   hints?: AssessmentHint[];
   hintText?: string;
@@ -66,8 +67,11 @@ export type AssessmentAnswer = {
   questionId: string;
   answerType: "mock_audio" | "image_choice" | "yes_no_choice" | "skipped";
   selectedOptionId?: string;
+  answerImageUrl?: string;
+  answerBoolean?: boolean;
   mockRecordingState?: "recorded";
   mockAnswer?: string;
+  voiceFile?: Blob;
   hintLevelUsed?: 0 | 1 | 2 | 3;
   hintCountUsed?: 0 | 1 | 2 | 3;
   responseTimeMs?: number;
@@ -81,7 +85,6 @@ export type SavedAssessmentAnswer = {
   answerType: AssessmentAnswer["answerType"];
   selectedOptionId?: string;
   mockRecordingState?: AssessmentAnswer["mockRecordingState"];
-  hintLevelUsed?: AssessmentAnswer["hintLevelUsed"];
   hintCountUsed?: AssessmentAnswer["hintCountUsed"];
   responseTimeMs?: AssessmentAnswer["responseTimeMs"];
   isCorrect?: boolean;
@@ -92,6 +95,7 @@ export type SavedAssessmentAnswer = {
 export type AssessmentCategorySummary = {
   category: StandardAssessmentCategory;
   label: string;
+  recommendedDifficultyId: number;
   summaryText: string;
   noteText: string;
 };

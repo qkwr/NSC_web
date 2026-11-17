@@ -29,24 +29,40 @@ const inputClass =
 const familyStatusOptions = ["มีครอบครัว", "อยู่คนเดียว", "อยู่กับญาติ", "อื่น ๆ"];
 const genderOptions = ["ชาย", "หญิง", "อื่น ๆ"];
 
+// --- Helper Functions for Buddhist Year Conversion ---
+function toBuddhistYear(dateString: string): string {
+  if (!dateString) return "";
+  return dateString.replace(/^(\d{4})/, (yearStr) => {
+    const year = parseInt(yearStr, 10);
+    // Convert to Buddhist if the underlying data is Gregorian
+    if (year >= 1800 && year < 2400) {
+      return (year + 543).toString();
+    }
+    return yearStr;
+  });
+}
+
+// ---------------------------------------------------
+
 export function createEmptyPatientProfile(
   overrides: Partial<PatientProfile> = {},
 ): PatientProfile {
   return {
     id: "",
     patientCode: "",
-    fullName: "",
-    age: 0,
+    firstName: "",
+    lastName: "",
     gender: "ชาย",
-    birthDate: "",
+    dateOfBirth: "",
     province: "",
     postalCode: "",
     occupation: "",
-    caregiverName: "",
+    caregiverFirstName: "",
+    caregiverLastName: "",
     caregiverRelationship: "",
+    caregiverTelephone: "",
     familyStatus: "มีครอบครัว",
     householdMembersCount: 0,
-    spouseName: "",
     hasChildren: false,
     childrenCount: 0,
     ...overrides,
@@ -54,26 +70,26 @@ export function createEmptyPatientProfile(
 }
 
 function normalizeProfile(profile: PatientProfile): PatientProfile {
-  const hasChildren = profile.hasChildren;
+  const hasChildren = profile.childrenCount > 0;
 
   return {
     ...profile,
     patientCode: normalizePatientCode(profile.patientCode),
-    fullName: profile.fullName.trim(),
+    firstName: profile.firstName?.trim() || "",
+    lastName: profile.lastName?.trim() || "",
     gender: profile.gender || "ชาย",
-    age: Number.isFinite(profile.age) ? profile.age : 0,
-    birthDate: profile.birthDate.trim(),
+    dateOfBirth: profile.dateOfBirth.trim(),
     province: profile.province.trim(),
     postalCode: profile.postalCode.trim(),
     occupation: profile.occupation.trim(),
-    caregiverName: profile.caregiverName.trim(),
+    caregiverFirstName: profile.caregiverFirstName.trim(),
+    caregiverLastName: profile.caregiverLastName.trim(),
     caregiverRelationship: profile.caregiverRelationship.trim(),
+    caregiverTelephone: profile.caregiverTelephone.trim(),
     familyStatus: profile.familyStatus || "มีครอบครัว",
     householdMembersCount: Number.isFinite(profile.householdMembersCount)
       ? profile.householdMembersCount
       : 0,
-    spouseName: profile.spouseName.trim(),
-    hasChildren,
     childrenCount: hasChildren && Number.isFinite(profile.childrenCount)
       ? profile.childrenCount
       : 0,
@@ -84,20 +100,18 @@ function validateProfile(profile: PatientProfile): PatientFormErrors {
   const normalized = normalizeProfile(profile);
   const errors: PatientFormErrors = {};
 
-  if (!normalized.fullName) {
-    errors.fullName = "กรุณากรอกชื่อ-นามสกุล";
+  if (!normalized.firstName) {
+    errors.firstName = "กรุณากรอกชื่อ";
+  }
+
+  if (!normalized.lastName) {
+    errors.lastName = "กรุณากรอกนามสกุล";
   }
 
   if (!normalized.patientCode) {
     errors.patientCode = "กรุณาสร้างหรือกรอกรหัสเข้าใช้งานผู้รับบริการ";
   } else if (!validatePatientCodeFormat(normalized.patientCode)) {
     errors.patientCode = "รหัสต้องอยู่ในรูปแบบ P-XXXXXX เช่น P-482913";
-  } else if (!isPatientCodeUnique(normalized.patientCode, normalized.id || undefined)) {
-    errors.patientCode = "รหัสเข้าใช้งานผู้รับบริการนี้ถูกใช้แล้ว";
-  }
-
-  if (normalized.age <= 0) {
-    errors.age = "กรุณากรอกอายุเป็นตัวเลข";
   }
 
   if (!normalized.province) {
@@ -108,12 +122,20 @@ function validateProfile(profile: PatientProfile): PatientFormErrors {
     errors.postalCode = "รหัสไปรษณีย์ควรมี 5 หลัก";
   }
 
-  if (!normalized.caregiverName) {
-    errors.caregiverName = "กรุณากรอกชื่อผู้ดูแล";
+  if (!normalized.caregiverFirstName) {
+    errors.caregiverFirstName = "กรุณากรอกชื่อผู้ดูแล";
+  }
+
+  if (!normalized.caregiverLastName) {
+    errors.caregiverLastName = "กรุณากรอกนามสกุลผู้ดูแล";
   }
 
   if (!normalized.caregiverRelationship) {
     errors.caregiverRelationship = "กรุณากรอกความเกี่ยวข้อง";
+  }
+
+  if (!normalized.caregiverTelephone) {
+    errors.caregiverTelephone = "กรุณากรอกเบอร์โทรศัพท์ผู้ดูแล";
   }
 
   if (normalized.householdMembersCount < 0) {
@@ -140,6 +162,38 @@ function FormSection({
       <div className="mt-5 grid gap-4 sm:grid-cols-2">{children}</div>
     </section>
   );
+}
+
+// --- Helper Functions for DD/MM/YYYY (Buddhist) <-> YYYY-MM-DD (Gregorian) ---
+
+// Converts state "YYYY-MM-DD" (Gregorian) to input "DD/MM/BBBB" (Buddhist)
+function formatForInput(dateString: string): string {
+  if (!dateString) return "";
+  const parts = dateString.split("-");
+  
+  // Only convert if it's a full YYYY-MM-DD string
+  if (parts.length === 3 && parts[0].length === 4) {
+    const year = parseInt(parts[0], 10);
+    const buddhistYear = year < 2400 ? year + 543 : year;
+    return `${parts[2]}/${parts[1]}/${buddhistYear}`;
+  }
+  
+  return dateString; // Return as-is while the user is partially typing
+}
+
+// Converts input "DD/MM/BBBB" (Buddhist) to state "YYYY-MM-DD" (Gregorian)
+function parseFromInput(inputString: string): string {
+  if (!inputString) return "";
+  const parts = inputString.split("/");
+  
+  // Only convert if the user has completed typing DD/MM/YYYY
+  if (parts.length === 3 && parts[2].length === 4) {
+    const year = parseInt(parts[2], 10);
+    const gregorianYear = year >= 2400 ? year - 543 : year;
+    return `${gregorianYear}-${parts[1]}-${parts[0]}`;
+  }
+  
+  return inputString; // Return as-is while the user is partially typing
 }
 
 function Field({
@@ -241,6 +295,19 @@ export default function PatientForm({
       return;
     }
 
+    const isUnique = await isPatientCodeUnique(
+      normalizedProfile.patientCode,
+      normalizedProfile.id || undefined,
+    );
+
+    if (!isUnique) {
+      setErrors((current) => ({
+        ...current,
+        patientCode: "รหัสเข้าใช้งานผู้รับบริการนี้ถูกใช้แล้ว",
+      }));
+      return;
+    }
+
     setIsSaving(true);
     const didSave = await onSubmit(normalizedProfile);
     setIsSaving(false);
@@ -257,12 +324,21 @@ export default function PatientForm({
 
         <form className="mt-8 grid gap-6" onSubmit={handleSubmit}>
           <FormSection title="ข้อมูลผู้รับบริการ">
-            <Field label="ชื่อ-นามสกุล" error={errors.fullName}>
+            <Field label="ชื่อ" error={errors.firstName}>
               <input
                 className={inputClass}
                 required
-                value={profile.fullName}
-                onChange={(event) => updateProfile({ fullName: event.target.value })}
+                value={profile.firstName}
+                onChange={(event) => updateProfile({ firstName: event.target.value })}
+              />
+            </Field>
+
+            <Field label="นามสกุล" error={errors.lastName}>
+              <input
+                className={inputClass}
+                required
+                value={profile.lastName}
+                onChange={(event) => updateProfile({ lastName: event.target.value })}
               />
             </Field>
 
@@ -317,21 +393,6 @@ export default function PatientForm({
               ) : null}
             </div>
 
-            <Field label="อายุ" error={errors.age}>
-              <input
-                type="number"
-                min={0}
-                className={inputClass}
-                required
-                value={profile.age || ""}
-                onChange={(event) =>
-                  updateProfile({
-                    age: event.target.value === "" ? 0 : Number(event.target.value),
-                  })
-                }
-              />
-            </Field>
-
             <Field label="เพศ">
               <select
                 className={inputClass}
@@ -349,15 +410,19 @@ export default function PatientForm({
             <Field label="วันเกิด">
               <input
                 className={inputClass}
-                placeholder="เช่น 2499-01-12"
-                value={profile.birthDate}
-                onChange={(event) => updateProfile({ birthDate: event.target.value })}
+                placeholder="เช่น 12/01/2499"
+                value={formatForInput(profile.dateOfBirth)}
+                onChange={(event) => 
+                  updateProfile({ 
+                    dateOfBirth: parseFromInput(event.target.value) 
+                  })
+                }
               />
               <p className="text-sm font-medium text-[#557276]">
-                แสดงผล: {formatThaiBirthDate(profile.birthDate)}
+                แสดงผล: {formatThaiBirthDate(toBuddhistYear(profile.dateOfBirth))}
               </p>
             </Field>
-
+            
             <Field label="จังหวัดภูมิลำเนา" error={errors.province}>
               <input
                 className={inputClass}
@@ -389,13 +454,24 @@ export default function PatientForm({
           </FormSection>
 
           <FormSection title="ข้อมูลผู้ดูแล">
-            <Field label="ชื่อ-นามสกุลผู้ดูแล" error={errors.caregiverName}>
+            <Field label="ชื่อผู้ดูแล" error={errors.caregiverFirstName}>
               <input
                 className={inputClass}
                 required
-                value={profile.caregiverName}
+                value={profile.caregiverFirstName}
                 onChange={(event) =>
-                  updateProfile({ caregiverName: event.target.value })
+                  updateProfile({ caregiverFirstName: event.target.value })
+                }
+              />
+            </Field>
+
+            <Field label="นามสกุลผู้ดูแล" error={errors.caregiverLastName}>
+              <input
+                className={inputClass}
+                required
+                value={profile.caregiverLastName}
+                onChange={(event) =>
+                  updateProfile({ caregiverLastName: event.target.value })
                 }
               />
             </Field>
@@ -406,11 +482,24 @@ export default function PatientForm({
             >
               <input
                 className={inputClass}
-                placeholder="เช่น ภรรยา, สามี, บุตร, ญาติ, ผู้ดูแล"
+                placeholder="เช่น ภรรยา, สามี, บุตร, ญาติ"
                 required
                 value={profile.caregiverRelationship}
                 onChange={(event) =>
                   updateProfile({ caregiverRelationship: event.target.value })
+                }
+              />
+            </Field>
+
+            <Field label="เบอร์โทรศัพท์ผู้ดูแล" error={errors.caregiverTelephone}>
+              <input
+                type="tel"
+                className={inputClass}
+                placeholder="เช่น 0812345678"
+                required
+                value={profile.caregiverTelephone}
+                onChange={(event) =>
+                  updateProfile({ caregiverTelephone: event.target.value })
                 }
               />
             </Field>
@@ -448,14 +537,6 @@ export default function PatientForm({
                       event.target.value === "" ? 0 : Number(event.target.value),
                   })
                 }
-              />
-            </Field>
-
-            <Field label="ชื่อคู่สมรส">
-              <input
-                className={inputClass}
-                value={profile.spouseName}
-                onChange={(event) => updateProfile({ spouseName: event.target.value })}
               />
             </Field>
 

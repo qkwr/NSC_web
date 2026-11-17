@@ -6,46 +6,48 @@ import PatientForm, {
 } from "@/features/therapist/components/PatientForm";
 import { createPatient } from "@/features/therapist/services/therapistDashboardService";
 import type {
+  ApiGender,
+  CreatePatientPayload,
   PatientProfile,
-  TherapistPatientDetail,
 } from "@/features/therapist/types/therapist.types";
 
 const emptyPatient = createEmptyPatientProfile();
 
-function createPatientDetailFromProfile(
+function createPatientPayloadFromProfile(
   profile: PatientProfile,
-): TherapistPatientDetail {
-  const now = new Date().toISOString();
+): CreatePatientPayload {
+
+  let gender : ApiGender;
+
+  switch (profile.gender) {
+    case "ชาย":
+      gender = "MALE";
+      break;
+    case "หญิง":
+      gender = "FEMALE";
+      break;
+    default:
+      gender = "OTHER"
+  }
 
   return {
-    id: profile.id,
-    code: profile.patientCode,
-    name: profile.fullName,
-    age: profile.age,
-    patientProfile: profile,
-    caregiverName: profile.caregiverName,
-    lastSessionAt: now,
-    latestSessionAt: now,
-    latestTrainingSet: "",
-    latestAssessmentDate: "",
-    needsFollowUp: false,
-    pn001ProgressPercent: 0,
-    pn002ProgressPercent: 0,
-    pn001Summary: {
-      title: "แบบประเมินมาตรฐาน",
-      completedQuestions: 0,
-      totalQuestions: 30,
-      note: "",
-    },
-    pn002Naming: {
-      categoryName: "สัตว์",
-      latestSetTitle: "",
-      completedQuestions: 0,
-      totalQuestions: 45,
-      correctWords: [],
-      missedWords: [],
-      wordsToReview: [],
-    },
+    account: profile.patientCode?.trim(),
+    password: profile.patientCode?.trim(),
+    patientFirstName: profile.firstName,
+    patientLastName: profile.lastName,
+    gender: gender,
+    dateOfBirth: profile.dateOfBirth,
+    occupation: profile.occupation,
+    province: profile.province,
+    note: profile.familyStatus,
+    familyStatus: profile.familyStatus,
+    caregiverFirstName: profile.caregiverFirstName,
+    caregiverLastName: profile.lastName,
+    caregiverRelationship: profile.caregiverRelationship,
+    caregiverTelephone: profile.caregiverTelephone,
+    childrenCount: profile.hasChildren ? profile.childrenCount : 0,
+    householdMembersCount: profile.householdMembersCount,
+    postcode: profile.postalCode
   };
 }
 
@@ -53,7 +55,7 @@ export default function NewTherapistPatientPage() {
   const router = useRouter();
 
   async function handleCreatePatient(profile: PatientProfile) {
-    const result = await createPatient(createPatientDetailFromProfile(profile));
+    const result = await createPatient(createPatientPayloadFromProfile(profile));
 
     if (!result.success) {
       window.alert(result.errorMessage);

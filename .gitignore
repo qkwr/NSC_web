@@ -6,3 +6,8 @@ node_modules
 .DS_Store
 tsconfig.tsbuildinfo
 test-results/
+
+generated/
+.env*
+.vercel/
+*.tsbuildinfo

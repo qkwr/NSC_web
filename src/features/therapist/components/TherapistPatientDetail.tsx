@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import type {
   PatientProfile,
   TherapistPatientDetail as TherapistPatientDetailData,
@@ -12,6 +11,7 @@ import type {
 } from "../types/therapistClinical.types";
 import TherapistPatientActions from "./TherapistPatientActions";
 import TherapistPatientDetailClient from "./TherapistPatientDetailClient";
+import PatientCodeCopyButton from "./PatientCodeCopyButton";
 
 type TherapistPatientDetailProps = {
   categoryScores: CategoryScore[];
@@ -22,39 +22,29 @@ type TherapistPatientDetailProps = {
 function getSafePatientProfile(
   patient: TherapistPatientDetailData,
 ): PatientProfile {
-  const existingProfile = patient.patientProfile as
-    | Partial<PatientProfile>
-    | undefined;
-
-  const fallbackProfile: PatientProfile = {
-    id: patient.id,
-    patientCode: patient.code,
-    fullName: patient.name,
-    age: patient.age,
-    gender: "",
-    birthDate: "",
-    province: "—",
-    postalCode: "",
-    occupation: "",
-    caregiverName: patient.caregiverName || "—",
-    caregiverRelationship: "—",
-    familyStatus: "—",
-    householdMembersCount: 0,
-    spouseName: "",
-    hasChildren: false,
-    childrenCount: 0,
-  };
+  const existingProfile = patient.patientProfile as Partial<PatientProfile> | undefined;
 
   return {
-    ...fallbackProfile,
-    ...existingProfile,
     id: existingProfile?.id || patient.id,
     patientCode: existingProfile?.patientCode || patient.code,
-    fullName: existingProfile?.fullName || patient.name,
-    age: existingProfile?.age || patient.age,
-    caregiverName: existingProfile?.caregiverName || patient.caregiverName || "—",
+    firstName: existingProfile?.firstName || patient.name.split(" ")[0] || "",
+    lastName: existingProfile?.lastName || patient.name.split(" ").slice(1).join(" ") || "",
+    gender: existingProfile?.gender || "",
+    dateOfBirth: existingProfile?.dateOfBirth || "",
+    province: existingProfile?.province || "",
+    postalCode: existingProfile?.postalCode || "",
+    occupation: existingProfile?.occupation || "",
+    caregiverFirstName: existingProfile?.caregiverFirstName || "",
+    caregiverLastName: existingProfile?.caregiverLastName || "",
+    caregiverRelationship: existingProfile?.caregiverRelationship || "",
+    caregiverTelephone: existingProfile?.caregiverTelephone || "",
+    familyStatus: existingProfile?.familyStatus || "",
+    householdMembersCount: Number(existingProfile?.householdMembersCount) || 0,
+    hasChildren: Boolean(existingProfile?.hasChildren),
+    childrenCount: Number(existingProfile?.childrenCount) || 0,
   };
 }
+
 function ProfileChip({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-[18px] bg-[#F8FEFF] px-4 py-3 ring-1 ring-[#D7EFF0]">
@@ -71,17 +61,7 @@ export function TherapistPatientDetail({
   patient,
   progressBySession,
 }: TherapistPatientDetailProps) {
-  const [copyStatus, setCopyStatus] = useState("");
   const profile = getSafePatientProfile(patient);
-
-  async function handleCopyPatientCode() {
-    if (typeof navigator === "undefined" || !navigator.clipboard) {
-      return;
-    }
-
-    await navigator.clipboard.writeText(profile.patientCode);
-    setCopyStatus("คัดลอกรหัสแล้ว");
-  }
 
   return (
     <main className="min-h-dvh overflow-x-clip bg-[linear-gradient(180deg,#F6FEFF_0%,#EAF9FB_58%,#DFF3F5_100%)] px-3 py-3 text-[#123232] sm:px-5">
@@ -96,20 +76,16 @@ export function TherapistPatientDetail({
                 >
                   กลับรายชื่อ
                 </Link>
-                <button
-                  type="button"
-                  className="no-print inline-flex min-h-[38px] items-center justify-center rounded-full bg-[#F2FBFB] px-4 text-sm font-bold text-[#13756F] ring-1 ring-[#CDEEEF] transition hover:bg-[#F7FFFF]"
-                  onClick={handleCopyPatientCode}
-                >
-                  {copyStatus || `Patient Code ${profile.patientCode}`}
-                </button>
+                <div className="no-print">
+                  <PatientCodeCopyButton patientCode={profile.patientCode} />
+                </div>
               </div>
               <h1 className="mt-3 text-[clamp(1.75rem,2.7vw,2.45rem)] font-bold leading-tight">
-                {profile.fullName}
+                {profile.firstName + " " + profile.lastName}
               </h1>
               <p className="mt-1 text-sm font-semibold text-[#557276]">
-                ประเมินล่าสุด {patient.latestAssessmentDate || "—"} · ฝึกล่าสุด{" "}
-                {patient.latestSessionAt?.slice(0, 10) || "—"}
+                ประเมินล่าสุด {patient.latestAssessmentDate?.slice(0, 10) || "—"} · ฝึกล่าสุด{" "}
+                {patient.lastSessionAt?.slice(0, 10) || "—"}
               </p>
             </div>
 
@@ -119,19 +95,19 @@ export function TherapistPatientDetail({
           </div>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-            <ProfileChip label="อายุ" value={`${profile.age || "—"} ปี`} />
+            <ProfileChip label="อายุ" value={`${patient.age || "—"} ปี`} />
             <ProfileChip label="จังหวัด" value={profile.province || "—"} />
             <ProfileChip
               label="ผู้ดูแล"
-              value={`${profile.caregiverName || "—"} (${profile.caregiverRelationship || "—"})`}
+              value={`${patient.caregiverFirstName + " " + patient.caregiverLastName} (${profile.caregiverRelationship || "—"})`}
             />
             <ProfileChip
               label="หมวดล่าสุด"
-              value={patient.latestTrainingSet || patient.pn002Naming.latestSetTitle || "—"}
+              value={patient.latestTrainingSet || "—"}
             />
             <ProfileChip
               label="ภาพรวมการฝึก"
-              value={`${patient.pn002Naming.completedQuestions || "—"}/${patient.pn002Naming.totalQuestions || "—"} ข้อ`}
+              value={`${patient.lastSession?.totalScore || "—"}/${patient.lastSession ? 15 : "—"} ข้อ`}
             />
           </div>
         </section>

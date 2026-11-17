@@ -1,9 +1,13 @@
 import { TherapistDashboard } from "@/features/therapist/components/TherapistDashboard";
+import { cookies } from "next/headers";
 import { getTherapistDashboardData } from "@/features/therapist/services/therapistDashboardService";
+import { getBaseUrl } from "@/lib/baseUrl";
 
 export default async function TherapistDashboardPage() {
-  const result = await getTherapistDashboardData();
+  const origin = getBaseUrl();
+  const cookieHeader = (await cookies()).toString();
 
+  const result = await getTherapistDashboardData(undefined, { origin, cookieHeader });
   if (!result.success) {
     return (
       <main className="flex min-h-dvh items-center justify-center bg-[#EFFBFD] p-8">

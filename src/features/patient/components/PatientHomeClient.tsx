@@ -2,159 +2,341 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import type { JSX, MouseEvent } from "react";
 import { useEffect, useState } from "react";
-import type { MouseEvent } from "react";
 import {
-  clearAuthSession,
-  getAuthSession,
+	clearAuthSession,
+	getAuthSession,
 } from "@/features/auth/services/authSession";
+import { Play } from "lucide-react";
+import { patientTrainingTitle } from "../services/patientTrainingPresentation";
+import { getTodayTrainingPlan } from "@/features/training/services/trainingPlanService";
 import { getPatientHomeData } from "../services/patientHomeService";
-import type { PatientHomeData } from "../types/patientHome.types";
+import type {
+	PatientHomeData,
+	WeekStreakDay,
+} from "../types/patientHome.types";
+
+function WeekStreak({ days }: { days: WeekStreakDay[] }) {
+	return (
+		<div
+			className="flex items-center justify-between gap-1 rounded-3xl bg-[#F3FBFB] px-2 py-3 sm:gap-1.5 sm:px-4 sm:py-4"
+			role="list"
+			aria-label="การฝึก 7 วันล่าสุด"
+		>
+			{days.map((day, index) => (
+				<div
+					key={`${day.label}-${index}`}
+					className="flex flex-1 flex-col items-center gap-1.5 sm:gap-2.5"
+					role="listitem"
+				>
+					<span
+						className={
+							"text-xs font-bold sm:text-sm md:text-base " +
+							(day.isToday ? "text-[#178F84]" : "text-[#7A9A9C]")
+						}
+					>
+						{day.label}
+					</span>
+					<span
+						className={
+							"flex aspect-square w-full max-w-11 items-center justify-center rounded-full text-sm font-bold sm:max-w-13 sm:text-base md:max-w-14 md:text-lg " +
+							(day.score !== null
+								? "bg-[#18867d] text-white"
+								: day.isToday
+									? "border-2 border-dashed border-[#1FA89C] text-[#1FA89C]"
+									: "border border-[#D7ECED] bg-white text-[#B9CFD0]")
+						}
+					>
+						{day.score !== null ? (
+							<svg
+								aria-hidden="true"
+								className="h-5 w-5 sm:h-6 sm:w-6 md:h-7 md:w-7"
+								fill="none"
+								stroke="currentColor"
+								strokeWidth={3}
+								viewBox="0 0 24 24"
+							>
+								<path
+									d="M5 13l4 4L19 7"
+									strokeLinecap="round"
+									strokeLinejoin="round"
+								/>
+							</svg>
+						) : (
+							"–"
+						)}
+					</span>
+				</div>
+			))}
+		</div>
+	);
+}
+
+function PlanElement({
+	text,
+	isFinished,
+}: {
+	text: string;
+	isFinished: boolean;
+}) {
+	const className = isFinished ? "line-through text-gray-400" : "";
+
+	return <span className={className}>{text}</span>;
+}
 
 export function PatientHomeClient() {
-  const router = useRouter();
-  const [homeData, setHomeData] = useState<PatientHomeData | null>(null);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
-  const [showStartToast, setShowStartToast] = useState(false);
-  const [isStartingAction, setIsStartingAction] = useState(false);
+	const router = useRouter();
+	const [homeData, setHomeData] = useState<PatientHomeData | null>(null);
+	const [homeAction, setHomeAction] = useState({
+		eyebrow: "",
+		title: "",
+		description: "",
+		progressPercent: undefined as number | undefined,
+		buttonText: "",
+	});
+	const [errorMessage, setErrorMessage] = useState("");
 
-  useEffect(() => {
-    let isActive = true;
+	const [isLoading, setIsLoading] = useState(true);
+	const [isFinished, setIsFinished] = useState(false);
+	const [showStartToast, setShowStartToast] = useState(false);
+	const [isStartingAction, setIsStartingAction] = useState(false);
+	const [todayPlans, setTodayPlans] = useState<JSX.Element[] | undefined>();
 
-    async function loadHomeData() {
-      const session = getAuthSession();
+	useEffect(() => {
+		let isActive = true;
 
-      if (!session || session.role !== "patient") {
-        router.replace("/");
-        return;
-      }
+		async function loadHomeData() {
+			const session = getAuthSession();
 
-      const result = await getPatientHomeData(session.accessCode);
+			if (!session || session.role !== "patient") {
+				router.replace("/");
+				return;
+			}
 
-      if (!isActive) {
-        return;
-      }
+			const result = await getPatientHomeData(session.user.id);
 
-      if (!result.success) {
-        setErrorMessage(result.errorMessage);
-        setIsLoading(false);
-        return;
-      }
+			if (!isActive) {
+				return;
+			}
 
-      setHomeData(result.data);
-      setIsLoading(false);
-    }
+			if (!result.success) {
+				setErrorMessage(result.errorMessage);
+				setIsLoading(false);
+				return;
+			}
 
-    loadHomeData();
+			const patientId = session.user.patientId;
+			setHomeData(result.data);
 
-    return () => {
-      isActive = false;
-    };
-  }, [router]);
+			switch (result.data.nextAction.type) {
+				case "has_daily_training_plan": {
+					const todayPlanResult = await getTodayTrainingPlan(Number(patientId));
+					const todayPlanData = [...(todayPlanResult.data ?? [])].sort(
+						(a, b) => {
+							if (a.status === "PENDING" && b.status !== "PENDING") return -1;
+							if (a.status !== "PENDING" && b.status === "PENDING") return 1;
+							return 0;
+						},
+					);
 
-  function handleLogout() {
-    clearAuthSession();
-    router.push("/");
-  }
+					const planList: JSX.Element[] = [];
 
-  function handlePrimaryActionClick(event: MouseEvent<HTMLAnchorElement>) {
-    event.preventDefault();
+					if (todayPlanData.length > 0) {
+						for (let i: number = 0; i < todayPlanData.length; i++) {
+							const planEntry = todayPlanData[i];
+							const text = patientTrainingTitle(
+								`${planEntry.categoryName} ${planEntry.moduleName}`,
+							);
+							planList.push(
+								<PlanElement
+									text={text}
+									isFinished={planEntry.status === "COMPLETED"}
+									key={i}
+								/>,
+							);
+						}
+					}
 
-    if (!homeData || isStartingAction) {
-      return;
-    }
+					setTodayPlans(planList);
 
-    setShowStartToast(true);
-    setIsStartingAction(true);
+					setHomeAction({
+						eyebrow: "",
+						title: "กิจกรรมวันนี้",
+						description: "",
+						progressPercent: 0,
+						buttonText: "เริ่มฝึก",
+					});
+					break;
+				}
+				case "needs_standard_assessment":
+					setHomeAction({
+						eyebrow: "ครั้งแรก",
+						title: "แบบประเมินมาตรฐาน",
+						description: "",
+						progressPercent: 0,
+						buttonText: "เริ่มประเมิน",
+					});
+					break;
+				case "finished_daily_training_plan":
+					setIsFinished(true);
+					break;
+			}
 
-    window.setTimeout(() => {
-      router.push(homeData.nextAction.targetPath);
-    }, 700);
-  }
+			setIsLoading(false);
+		}
 
-  return (
-    <main className="min-h-dvh bg-[linear-gradient(180deg,#F6FEFF_0%,#EAF9FB_58%,#DFF3F5_100%)] px-5 py-6 text-[#123232] sm:px-8 sm:py-7">
-      <div className="mx-auto flex min-h-[calc(100dvh-3rem)] w-full max-w-[1040px] flex-col sm:min-h-[calc(100dvh-3.5rem)]">
-        <header className="flex justify-start">
-          <button
-            className="min-h-[56px] rounded-full border border-[#C8E9EA] bg-white px-7 text-lg font-semibold text-[#1A7F78] outline-none transition hover:bg-[#F5FEFF] focus:ring-4 focus:ring-[#1FA89C]/20 active:scale-[0.98]"
-            type="button"
-            onClick={handleLogout}
-          >
-            ออกจากระบบ
-          </button>
-        </header>
+		loadHomeData();
 
-        <section className="flex flex-1 items-center justify-center py-6 sm:py-7">
-          {isLoading ? (
-            <p className="text-center text-2xl font-bold text-[#45686A] sm:text-3xl">
-              กำลังโหลดข้อมูล...
-            </p>
-          ) : errorMessage || !homeData ? (
-            <div className="mx-auto w-full max-w-[920px] rounded-[28px] border border-[#F3D0D0] bg-white px-7 py-8 text-center shadow-[0_18px_45px_rgba(24,112,108,0.08)] sm:px-9">
-              <p className="text-2xl font-bold text-[#B42318]">
-                {errorMessage || "ไม่พบข้อมูลผู้รับบริการ"}
-              </p>
-            </div>
-          ) : (
-            <div className="mx-auto w-full max-w-[920px]">
-              <p className="mb-8 text-center text-[2.2rem] font-bold leading-tight sm:text-[2.8rem]">
-                สวัสดีค่ะ คุณ{homeData.patient.name}
-              </p>
+		return () => {
+			isActive = false;
+		};
+	}, [router]);
 
-              <article className="rounded-[34px] border border-[#C8E9EA] bg-white px-7 py-8 shadow-[0_22px_55px_rgba(24,112,108,0.1)] sm:px-10 sm:py-10">
-                <p className="text-base font-bold text-[#1FA89C] sm:text-lg">
-                  {homeData.nextAction.eyebrow}
-                </p>
-                <h1 className="mt-3 text-[2.2rem] font-bold leading-tight sm:text-[2.65rem]">
-                  {homeData.nextAction.title}
-                </h1>
-                <p className="mt-5 text-xl font-medium leading-9 text-[#4E6D70] sm:text-2xl sm:leading-10">
-                  {homeData.nextAction.description}
-                </p>
+	function handleLogout() {
+		clearAuthSession();
+		router.push("/");
+	}
 
-                {typeof homeData.nextAction.progressPercent === "number" ? (
-                  <div className="mt-6" aria-label="ความคืบหน้า">
-                    <div className="mb-3 flex items-center justify-between text-lg font-bold text-[#4E6D70]">
-                      <span>ความคืบหน้า</span>
-                      <span>{homeData.nextAction.progressPercent}%</span>
-                    </div>
-                    <div className="h-5 overflow-hidden rounded-full bg-[#DDF2F3]">
-                      <div
-                        className="h-full rounded-full bg-[#1FA89C]"
-                        style={{
-                          width: `${homeData.nextAction.progressPercent}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                ) : null}
+	async function handlePrimaryActionClick(
+		event: MouseEvent<HTMLAnchorElement>,
+	) {
+		event.preventDefault();
 
-                <div className="relative mt-8">
-                  {showStartToast ? (
-                    <p
-                      className="pointer-events-none absolute -top-16 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full bg-[#123232] px-6 py-3 text-lg font-semibold text-white shadow-[0_14px_30px_rgba(18,50,50,0.16)]"
-                      role="status"
-                    >
-                      เยี่ยมเลย เริ่มกันเลย!
-                    </p>
-                  ) : null}
+		if (!homeData || isStartingAction) {
+			return;
+		}
 
-                  <Link
-                    className="flex min-h-[72px] w-full items-center justify-center rounded-[24px] bg-[#1FA89C] px-7 py-5 text-center text-2xl font-bold text-white shadow-[0_16px_34px_rgba(31,168,156,0.24)] outline-none transition duration-150 hover:bg-[#178F84] hover:shadow-[0_18px_38px_rgba(31,168,156,0.3)] focus:ring-4 focus:ring-[#1FA89C]/30 active:scale-[0.98] active:bg-[#13786F] sm:text-[1.65rem]"
-                    href={homeData.nextAction.targetPath}
-                    onClick={handlePrimaryActionClick}
-                    aria-disabled={isStartingAction}
-                  >
-                    {homeData.nextAction.buttonText}
-                  </Link>
-                </div>
-              </article>
-            </div>
-          )}
-        </section>
-      </div>
-    </main>
-  );
+		setShowStartToast(true);
+		setIsStartingAction(true);
+
+		window.setTimeout(() => {
+			router.push(homeData.nextAction.targetPath);
+		}, 700);
+	}
+
+	return (
+		<main className="min-h-dvh bg-[linear-gradient(180deg,#F6FEFF_0%,#EAF9FB_58%,#DFF3F5_100%)] px-4 py-5 text-[#123232] sm:px-8 sm:py-7">
+			<div className="mx-auto flex min-h-[calc(100dvh-2.5rem)] w-full max-w-260 flex-col sm:min-h-[calc(100dvh-3.5rem)]">
+				<header className="flex justify-end">
+					<button
+						className="min-h-11 rounded-full border border-[#C8E9EA] bg-white px-5 text-base font-semibold text-[#1A7F78] outline-none transition hover:bg-[#F5FEFF] focus:ring-4 focus:ring-[#1FA89C]/20 active:scale-[0.98] sm:min-h-14 sm:px-7 sm:text-lg"
+						type="button"
+						onClick={handleLogout}
+					>
+						ออกจากระบบ
+					</button>
+				</header>
+
+				<section className="flex flex-1 items-center justify-center py-6">
+					{isLoading ? (
+						<p className="text-center text-xl font-bold text-[#45686A] sm:text-2xl md:text-3xl">
+							กำลังโหลดข้อมูล...
+						</p>
+					) : errorMessage || !homeData ? (
+						<div className="mx-auto w-full max-w-230 rounded-3xl border border-[#F3D0D0] bg-white px-5 py-7 text-center shadow-[0_18px_45px_rgba(24,112,108,0.08)] sm:px-9 sm:py-8">
+							<p className="text-xl font-bold text-[#B42318] sm:text-2xl md:text-3xl">
+								{errorMessage || "ไม่พบข้อมูลผู้รับบริการ"}
+							</p>
+						</div>
+					) : (
+						<div className="mx-auto w-full max-w-230">
+							<h1 className="mb-6 text-balance text-center text-2xl font-bold leading-tight text-[#123232] sm:mb-8 sm:text-3xl md:text-4xl">
+								สวัสดีค่ะ คุณ{homeData.patient.name}
+							</h1>
+
+							{isFinished ? (
+								<article className="rounded-3xl border border-[#C8E9EA] bg-white px-5 py-8 text-center shadow-[0_22px_55px_rgba(24,112,108,0.1)] sm:px-10 sm:py-12">
+									<div className="mb-8 border-b border-[#E3F3F4] pb-6 sm:mb-10 sm:pb-8">
+										<p className="mb-4 text-base font-bold sm:text-2xl md:text-3xl">
+											ผลงานของท่าน 7 วันที่ผ่านมา
+										</p>
+										<WeekStreak days={homeData.weekStreak} />
+									</div>
+
+									<div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#DDF2F3] sm:h-24 sm:w-24">
+										<svg
+											aria-hidden="true"
+											className="h-8 w-8 text-[#1FA89C] sm:h-12 sm:w-12"
+											fill="none"
+											stroke="currentColor"
+											strokeWidth={3}
+											viewBox="0 0 24 24"
+										>
+											<path
+												d="M5 13l4 4L19 7"
+												strokeLinecap="round"
+												strokeLinejoin="round"
+											/>
+										</svg>
+									</div>
+
+									<h2 className="mt-5 text-balance text-2xl font-bold leading-tight text-[#1A7F78] sm:mt-6 sm:text-3xl md:text-4xl">
+										วันนี้เก่งมากเลยค่ะ ทำครบหมดแล้ว!
+									</h2>
+									<p className="mt-3 text-pretty text-lg font-medium leading-relaxed text-[#4E6D70] sm:mt-4 sm:text-xl md:text-2xl">
+										พักผ่อนเยอะๆ นะคะ แล้วพรุ่งนี้เจอกันค่ะ
+									</p>
+								</article>
+							) : (
+								<article className="rounded-3xl border border-[#C8E9EA] bg-white px-5 py-7 shadow-[0_22px_55px_rgba(24,112,108,0.1)] sm:px-10 sm:py-6">
+									{homeAction.eyebrow ? (
+										<p className="pb-2 text-base font-bold text-[#1FA89C] sm:pb-3 sm:text-lg">
+											{homeAction.eyebrow}
+										</p>
+									) : null}
+
+									<h2 className="mt-1 text-2xl font-bold leading-tight sm:mt-2 sm:text-3xl">
+										{homeAction.title}
+									</h2>
+
+									{/* MODIFIED: Renders description if it exists, else renders today's plans */}
+									<p className="mt-3 whitespace-pre-wrap pl-2 text-lg font-medium leading-relaxed sm:pl-3 sm:text-xl">
+										{homeAction.description
+											? homeAction.description
+											: todayPlans?.flatMap((val, i) =>
+													i === 0 ? [val] : [<br key={i + 0.5} />, val],
+												)}
+									</p>
+
+									<div className="relative mt-8 sm:mt-10">
+										{showStartToast ? (
+											<p
+												className="pointer-events-none absolute -top-14 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full bg-[#123232] px-5 py-2.5 text-base font-semibold text-white shadow-[0_14px_30px_rgba(18,50,50,0.16)] sm:-top-16 sm:px-6 sm:py-3 sm:text-lg"
+												role="status"
+											>
+												เริ่มกันเลย!
+											</p>
+										) : null}
+
+										<Link
+											className="flex min-h-16 w-full items-center justify-center rounded-3xl bg-[#1FA89C] px-6 py-4 text-center text-lg font-bold text-white shadow-[0_16px_34px_rgba(31,168,156,0.24)] outline-none transition duration-150 hover:bg-[#178F84] hover:shadow-[0_18px_38px_rgba(31,168,156,0.3)] focus:ring-4 focus:ring-[#1FA89C]/30 active:scale-[0.98] active:bg-[#13786F] sm:min-h-18 sm:px-7 sm:py-5 sm:text-xl md:text-2xl"
+											href={homeData.nextAction.targetPath}
+											onClick={handlePrimaryActionClick}
+											aria-disabled={isStartingAction}
+										>
+											<Play
+												aria-hidden="true"
+												className="mr-3 h-8 w-8 shrink-0"
+											/>
+											{homeAction.buttonText}
+										</Link>
+									</div>
+
+									{homeData.nextAction.type !== "needs_standard_assessment" && (
+										<div className="mt-6 border-t border-[#E3F3F4] pt-4 sm:mt-8">
+											<p className="mb-3 text-xl font-bold sm:mb-4 sm:text-2xl md:text-3xl">
+												ผลงานของท่าน 7 วันที่ผ่านมา
+											</p>
+											<WeekStreak days={homeData.weekStreak} />
+										</div>
+									)}
+								</article>
+							)}
+						</div>
+					)}
+				</section>
+			</div>
+		</main>
+	);
 }

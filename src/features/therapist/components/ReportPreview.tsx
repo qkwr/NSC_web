@@ -153,7 +153,6 @@ export function ReportPreview(props: ReportPreviewProps) {
         />
       </div>
 
-      <pre className="print-report-text mt-4">{reportText}</pre>
       <div className="no-print mt-4 max-h-[260px] min-w-0 overflow-y-auto rounded-[18px] bg-[#F8FEFF] p-4 text-sm font-semibold leading-6 text-[#123232] ring-1 ring-[#D7EFF0]">
         <pre className="whitespace-pre-wrap break-words font-[inherit]">{reportText}</pre>
       </div>

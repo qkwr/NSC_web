@@ -165,7 +165,7 @@ export function ProgressChart({ categoryKey, points }: ProgressChartProps) {
                   >
                     {validPoints.length > 10
                       ? `#${point.sessionNumber}`
-                      : point.date.slice(5)}
+                      : `${point.date.slice(8, 10)}/${point.date.slice(5, 7)}`}
                   </text>
                 ) : null}
               </g>

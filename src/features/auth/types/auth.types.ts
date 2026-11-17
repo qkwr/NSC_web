@@ -1,10 +1,12 @@
 export type AuthRole = "patient" | "therapist";
 
 export type AuthUser = {
-  id: string;
+  id: number;
   accessCode: string;
   role: AuthRole;
   displayName: string;
+  patientId?: number | null;
+  therapistId?: number | null;
 };
 
 export type LoginSuccessResult = {
